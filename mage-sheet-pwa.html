@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#080808"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Mage: The Ascension</title>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SAVED CHARACTER DATA
+     This block is rewritten every time you click "Save File".
+     Opening this file always restores whatever was last saved.
+     ═══════════════════════════════════════════════════════════ -->
+<script id="mage-baked-data" type="application/json">null</script>
+
+<!-- Capture the original HTML source BEFORE React renders,
+     then seed localStorage from the baked data above.         -->
+<script>
+(function () {
+  // Snapshot the raw HTML now — used as the save template
+  window._srcHTML = document.documentElement.outerHTML;
+
+  // Seed localStorage from baked data (the file is the source of truth)
+  try {
+    var raw   = document.getElementById('mage-baked-data').textContent.trim();
+    var baked = (raw && raw !== 'null') ? JSON.parse(raw) : null;
+    if (baked && typeof baked === 'object' && Object.keys(baked).length > 0) {
+      localStorage.setItem('mage_chars', JSON.stringify(baked));
+    }
+  } catch (e) {}
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body,#app{height:100%;background:#080808;color:#e8d9b0;font-family:'EB Garamond',Georgia,serif;overscroll-behavior:none}
+input,textarea,button{font-family:inherit;font-size:inherit}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=number]{-moz-appearance:textfield}
+textarea{resize:vertical}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:#0e0e0e}
+::-webkit-scrollbar-thumb{background:#c8a84b44;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── Palette ─────────────────────────────────────────────────
+const G = {
+  bg:'#080808', card:'#0e0e0e', border:'#c8a84b33', gold:'#c8a84b',
+  goldDim:'#c8a84b88', goldFaint:'#c8a84b2a',
+  text:'#e8d9b0', textDim:'#b8a880',
+  purple:'#c4a0e8', teal:'#5cad8f', red:'#c03030', blue:'#7ab8c8',
+};
+
+// ── Persistence ──────────────────────────────────────────────
+const LS = 'mage_chars';
+const loadAll  = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch { return {}; } };
+const saveAll  = d  => { localStorage.setItem(LS, JSON.stringify(d)); };
+const newId    = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+// ── Save the whole library INTO this HTML file and download it ──
+// The downloaded file replaces the current one — it IS the save.
+const saveToHtmlFile = () => {
+  const data    = loadAll();
+  const payload = JSON.stringify(data).replace(/<\/script>/gi, '<\\/script>');
+
+  const html = ('<!DOCTYPE html>\n' + window._srcHTML).replace(
+    /(<script\s[^>]*id="mage-baked-data"[^>]*>)([\s\S]*?)(<\/script>)/,
+    (_m, open, _old, close) => open + payload + close
+  );
+
+  const a = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(new Blob([html], { type:'text/html;charset=utf-8' })),
+    download: 'mage-sheet.html',
+  });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+};
+
+// Export single character as .mage JSON
+const exportMage = ch => {
+  const name = (ch.sheet?.identity?.name || 'mage_character').replace(/[^a-z0-9_\- ]/gi, '_');
+  const a = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(new Blob([JSON.stringify(ch, null, 2)], { type:'application/json' })),
+    download: name + '.mage',
+  });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+};
+
+// Import .mage file
+const importMage = () => new Promise((res, rej) => {
+  const inp = Object.assign(document.createElement('input'), { type:'file', accept:'.mage,.json' });
+  inp.onchange = async e => {
+    const f = e.target.files?.[0];
+    if (!f) return rej(new Error('No file'));
+    try { res(JSON.parse(await f.text())); } catch { rej(new Error('Invalid file')); }
+  };
+  document.body.appendChild(inp); inp.click(); document.body.removeChild(inp);
+});
+
+// ── Default sheet ────────────────────────────────────────────
+const mkSkills = ks => ks.map(k => ({ label:k, spec:'', value:0 }));
+const mkFree   = n  => Array.from({ length:n }, () => ({ name:'', value:0 }));
+const mkSphere = () => ({ name:'', value:0, descs:Array(5).fill('') });
+
+const DEFAULT = {
+  identity:{ name:'',concept:'',chronicle:'',ambition:'',desire:'',avatar:'',paradigm:'',tradition:'',tutor:'' },
+  physical:{ Strength:1, Dexterity:1, Stamina:1 },
+  social:  { Charisma:1, Manipulation:1, Composure:1 },
+  mental:  { Intelligence:1, Wits:1, Resolve:1 },
+  physSkills: mkSkills(['Athletics','Brawl','Craft','Drive','Firearms','Larceny','Melee','Stealth','Survival']),
+  socSkills:  mkSkills(['Animal Ken','Etiquette','Insight','Intimidation','Leadership','Performance','Persuasion','Streetwise','Subterfuge']),
+  mentSkills: mkSkills(['Academics','Awareness','Finance','Investigation','Medicine','Occult','Politics','Science','Technology']),
+  chronicleTenets:Array(5).fill(''), touchstones:Array(5).fill(''), tradTenets:Array(5).fill(''),
+  spheres:    Array(6).fill(null).map(mkSphere),
+  health:     Array(15).fill(0), willpower:Array(15).fill(0),
+  arete:      Array(10).fill(false), quint:Array(10).fill(false), paradox:Array(10).fill(0),
+  powerBonus:'', areteReroll:'',
+  backgrounds:mkFree(9), merits:mkFree(7), flaws:mkFree(7),
+  noHaven:false, havenRating:0, havenRows:mkFree(4),
+  xpTotal:'', xpSpent:'',
+  weapons:Array(6).fill(null).map(() => ({ name:'', dmg:'' })),
+  trueAge:'', apparentAge:'', dob:'', awakening:'',
+  appearance:'', distFeatures:'', history:'', possessions:'', notes:'',
+};
+
+const mergeSheet = saved => {
+  if (!saved) return structuredClone(DEFAULT);
+  const d = structuredClone(DEFAULT);
+  return {
+    ...d, ...saved,
+    identity:    { ...d.identity,    ...saved.identity    },
+    physical:    { ...d.physical,    ...saved.physical    },
+    social:      { ...d.social,      ...saved.social      },
+    mental:      { ...d.mental,      ...saved.mental      },
+    physSkills:  saved.physSkills?.length  ? saved.physSkills  : d.physSkills,
+    socSkills:   saved.socSkills?.length   ? saved.socSkills   : d.socSkills,
+    mentSkills:  saved.mentSkills?.length  ? saved.mentSkills  : d.mentSkills,
+    spheres:     saved.spheres?.length     ? saved.spheres     : d.spheres,
+    backgrounds: saved.backgrounds?.length ? saved.backgrounds : d.backgrounds,
+    merits:      saved.merits?.length      ? saved.merits      : d.merits,
+    flaws:       saved.flaws?.length       ? saved.flaws       : d.flaws,
+    havenRows:   saved.havenRows?.length   ? saved.havenRows   : d.havenRows,
+    weapons:     saved.weapons?.length     ? saved.weapons     : d.weapons,
+  };
+};
+
+// ── Shared UI atoms ──────────────────────────────────────────
+function Track({ values, onChange, shape='square', color=G.gold, size=16 }) {
+  return <span style={{ display:'inline-flex', flexWrap:'wrap', gap:4 }}>
+    {values.map((v,i) => (
+      <span key={i} onClick={() => onChange(values.map((x,j) => j===i?!x:x))}
+        style={{ width:size, height:size, borderRadius:shape==='circle'?'50%':2,
+          border:`1.5px solid ${color}`, background:v?color:'transparent',
+          cursor:'pointer', flexShrink:0, transition:'background .12s',
+          boxShadow:v?`0 0 5px ${color}88`:'none' }}/>
+    ))}
+  </span>;
+}
+
+// 3-state damage track: 0 = empty, 1 = slash (/), 2 = cross (X), -1 = locked blank
+// Short press cycles 0→1→2→0 (locked boxes ignore short press)
+// Long press (500ms): unlocked → lock+blank | locked → unlock
+function DamageTrack({ values, onChange, shape='square', color=G.gold }) {
+  const S = 16;
+  const timers = useRef({});
+
+  const cycle = i => {
+    if (values[i] === -1) return; // locked — ignore
+    onChange(values.map((v,j) => j===i ? (v+1)%3 : v));
+  };
+
+  const longPress = i => {
+    const locked = values[i] === -1;
+    onChange(values.map((v,j) => j===i ? (locked ? 0 : -1) : v));
+  };
+
+  const pointerDown = (i, e) => {
+    e.preventDefault();
+    timers.current[i] = setTimeout(() => {
+      timers.current[i] = null;
+      longPress(i);
+    }, 500);
+  };
+
+  const pointerUp = i => {
+    if (timers.current[i]) {          // timer still running → short press
+      clearTimeout(timers.current[i]);
+      timers.current[i] = null;
+      cycle(i);
+    }
+    // if null, long press already fired — do nothing
+  };
+
+  const pointerCancel = i => {
+    clearTimeout(timers.current[i]);
+    timers.current[i] = null;
+  };
+
+  return <span style={{ display:'inline-flex', flexWrap:'wrap', gap:4 }}>
+    {values.map((v,i) => {
+      const locked = v === -1;
+      const dim    = locked ? `${color}44` : color;
+      const dash   = locked ? '3,2' : null;
+      return (
+        <svg key={i} width={S} height={S} viewBox={`0 0 ${S} ${S}`}
+          onPointerDown={e => pointerDown(i, e)}
+          onPointerUp={() => pointerUp(i)}
+          onPointerLeave={() => pointerCancel(i)}
+          onPointerCancel={() => pointerCancel(i)}
+          onContextMenu={e => e.preventDefault()}
+          style={{ cursor: locked ? 'default' : 'pointer', flexShrink:0, display:'block', userSelect:'none', touchAction:'none' }}>
+          {shape === 'circle'
+            ? <circle cx={S/2} cy={S/2} r={S/2-1} fill="transparent" stroke={dim} strokeWidth="1.5" strokeDasharray={dash}/>
+            : <rect x={1} y={1} width={S-2} height={S-2} rx={1.5} fill="transparent" stroke={dim} strokeWidth="1.5" strokeDasharray={dash}/>
+          }
+          {v >= 1 && <line x1={3} y1={3} x2={S-3} y2={S-3} stroke={color} strokeWidth="1.8" strokeLinecap="round"/>}
+          {v >= 2 && <line x1={S-3} y1={3} x2={3} y2={S-3} stroke={color} strokeWidth="1.8" strokeLinecap="round"/>}
+        </svg>
+      );
+    })}
+  </span>;
+}
+
+function Dots({ max=5, value, onChange, color=G.gold }) {
+  return <span style={{ display:'inline-flex', gap:4 }}>
+    {Array.from({ length:max }).map((_,i) => (
+      <span key={i} onClick={() => onChange(i+1===value?0:i+1)}
+        style={{ width:14, height:14, borderRadius:'50%',
+          border:`1.5px solid ${color}`, background:i<value?color:'transparent',
+          cursor:'pointer', flexShrink:0, transition:'background .12s',
+          boxShadow:i<value?`0 0 4px ${color}88`:'none' }}/>
+    ))}
+  </span>;
+}
+
+function Divider({ children }) {
+  return <div style={{ display:'flex', alignItems:'center', gap:6, margin:'10px 0 8px' }}>
+    <span style={{ color:G.gold, fontSize:12 }}>◆</span>
+    <div style={{ flex:1, height:1, background:G.goldFaint }}/>
+    {children && <><span style={{ fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:'.22em', color:G.gold, fontWeight:700, whiteSpace:'nowrap' }}>{children}</span><div style={{ flex:1, height:1, background:G.goldFaint }}/></>}
+    <span style={{ color:G.gold, fontSize:12 }}>◆</span>
+  </div>;
+}
+
+function Field({ label, value, onChange, flex='1 1 160px', fs=13 }) {
+  return <div style={{ display:'flex', alignItems:'baseline', gap:5, flex }}>
+    <span style={{ fontFamily:'Cinzel,serif', fontSize:10, color:G.goldDim, whiteSpace:'nowrap', fontWeight:600 }}>{label}:</span>
+    <input value={value} onChange={e => onChange(e.target.value)}
+      style={{ flex:1, background:'transparent', border:'none', borderBottom:`1px solid ${G.goldFaint}`, color:G.text, fontSize:fs, outline:'none', padding:'1px 0', minWidth:0 }}/>
+  </div>;
+}
+
+function SkillRow({ label, spec, onSpec, value, onChange }) {
+  return <div style={{ display:'flex', alignItems:'center', gap:4, marginBottom:5 }}>
+    <span style={{ fontSize:13, color:G.text, minWidth:84, flexShrink:0 }}>{label}</span>
+    <input value={spec} onChange={e => onSpec(e.target.value)} placeholder="specialty"
+      style={{ flex:1, background:'transparent', border:'none', borderBottom:`1px solid ${G.goldFaint}`, color:G.goldDim, fontSize:11, fontStyle:'italic', outline:'none', padding:'0 1px', minWidth:0 }}/>
+    <Dots max={5} value={value} onChange={onChange}/>
+  </div>;
+}
+
+function FreeRow({ name, onName, value, onChange, placeholder='…' }) {
+  return <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:5 }}>
+    <input value={name} onChange={e => onName(e.target.value)} placeholder={placeholder}
+      style={{ flex:1, background:'transparent', border:'none', borderBottom:`1px solid ${G.goldFaint}`, color:G.text, fontSize:13, outline:'none', padding:'1px 2px', minWidth:0 }}/>
+    <Dots max={5} value={value} onChange={onChange}/>
+  </div>;
+}
+
+function Lines({ values, onChange }) {
+  return <>{values.map((v,i) => (
+    <input key={i} value={v} onChange={e => onChange(values.map((l,j) => j===i?e.target.value:l))}
+      style={{ display:'block', width:'100%', background:'transparent', border:'none', borderBottom:`1px solid ${G.goldFaint}`, color:G.text, fontSize:13, outline:'none', padding:'3px 2px', marginBottom:4, boxSizing:'border-box' }}/>
+  ))}</>;
+}
+
+function TArea({ label, value, onChange, rows=4 }) {
+  return <div style={{ marginBottom:12 }}>
+    {label && <div style={{ fontFamily:'Cinzel,serif', fontSize:9, letterSpacing:'.2em', color:G.goldDim, marginBottom:3 }}>{label.toUpperCase()}</div>}
+    <textarea value={value} onChange={e => onChange(e.target.value)} rows={rows}
+      style={{ width:'100%', background:'transparent', border:'none', borderBottom:`1px solid ${G.goldFaint}`, color:G.text, fontSize:13, outline:'none', padding:'4px 2px', lineHeight:1.7, boxSizing:'border-box' }}/>
+  </div>;
+}
+
+function SphereBlock({ sphere, onUpdate }) {
+  return <div style={{ marginBottom:10, padding:'8px 10px', border:`1px solid ${G.goldFaint}`, borderRadius:3 }}>
+    <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+      <input value={sphere.name} onChange={e => onUpdate({ ...sphere, name:e.target.value })} placeholder="Sphere…"
+        style={{ flex:1, background:'transparent', border:'none', borderBottom:`1px solid ${G.goldDim}`, color:G.text, fontFamily:'Cinzel,serif', fontSize:12, outline:'none', padding:'1px 2px' }}/>
+      <Dots max={5} value={sphere.value} onChange={v => onUpdate({ ...sphere, value:v })} color={G.purple}/>
+    </div>
+    {sphere.descs.map((d,i) => (
+      <div key={i} style={{ display:'flex', gap:5, alignItems:'baseline', marginBottom:3 }}>
+        <span style={{ fontFamily:'Cinzel,serif', fontSize:9, color:G.goldDim, minWidth:10 }}>{i+1}</span>
+        <input value={d} onChange={e => onUpdate({ ...sphere, descs:sphere.descs.map((x,j) => j===i?e.target.value:x) })}
+          style={{ flex:1, background:'transparent', border:'none', borderBottom:`1px solid ${G.goldFaint}`, color:G.textDim, fontSize:12, outline:'none', padding:'1px 2px' }}/>
+      </div>
+    ))}
+  </div>;
+}
+
+const card    = { background:G.card, border:`1px solid ${G.border}`, borderRadius:3, padding:'12px 14px', marginBottom:12 };
+const statLbl = { fontFamily:'Cinzel,serif', fontSize:9, letterSpacing:'.22em', color:G.goldDim, display:'block', marginBottom:5 };
+
+// ════════════════════════════════════════════════════════════
+// CHARACTER LIST
+// ════════════════════════════════════════════════════════════
+function CharacterList({ onOpen, onDirty }) {
+  const [chars, setChars] = useState(loadAll);
+  const [dirty, setDirty] = useState(false);
+  const [toast, setToast] = useState('');
+  const [busy,  setBusy]  = useState(false);
+  const mounted = useRef(false);
+
+  // Persist to localStorage on every change; mark dirty
+  useEffect(() => {
+    if (!mounted.current) { mounted.current = true; return; }
+    saveAll(chars);
+    setDirty(true);
+    onDirty(true);
+  }, [chars]);
+
+  const toast2 = (msg, ms=2500) => { setToast(msg); setTimeout(() => setToast(''), ms); };
+
+  const handleSave = () => {
+    saveToHtmlFile();
+    setDirty(false);
+    onDirty(false);
+    toast2('Downloaded! Replace your existing mage-sheet.html with this file to keep your data. ✓', 5000);
+  };
+
+  const handleNew = () => {
+    const id = newId();
+    setChars(p => ({ ...p, [id]:{ id, createdAt:Date.now(), updatedAt:Date.now(), sheet:null } }));
+    onOpen(id);
+  };
+
+  const handleImport = async () => {
+    if (busy) return; setBusy(true);
+    try {
+      const data = await importMage();
+      const id   = data.id || newId();
+      setChars(p => ({ ...p, [id]:{ ...data, id, updatedAt:Date.now() } }));
+      toast2('Character imported ✓');
+    } catch(e) { if (e.message !== 'No file') toast2('Import failed: ' + e.message); }
+    finally { setBusy(false); }
+  };
+
+  const handleDelete = (id, name) => {
+    if (!confirm(`Delete "${name || 'Unnamed Mage'}"?`)) return;
+    setChars(p => { const n={...p}; delete n[id]; return n; });
+  };
+
+  // Refresh chars when returning from sheet
+  const refreshFromStorage = () => setChars(loadAll());
+
+  const sorted = Object.values(chars).sort((a,b) => b.updatedAt - a.updatedAt);
+
+  const btnS = (extra={}) => ({
+    fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:'.15em',
+    border:`1px solid ${G.gold}`, borderRadius:3, background:'transparent',
+    color:G.gold, padding:'9px 18px', cursor:'pointer', ...extra,
+  });
+
+  return <div style={{ minHeight:'100vh', background:G.bg, backgroundImage:'radial-gradient(ellipse at 20% 10%,#1a1208 0%,transparent 55%)' }}>
+
+    <div style={{ textAlign:'center', padding:'28px 20px 16px', borderBottom:`1px solid ${G.goldFaint}` }}>
+      <div style={{ fontFamily:'Cinzel Decorative,serif', fontSize:28, color:G.gold, textShadow:`0 0 40px ${G.gold}44` }}>MAGE</div>
+      <div style={{ fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:'.5em', color:G.goldDim, marginTop:2 }}>THE ASCENSION</div>
+    </div>
+
+    {/* Prominent save banner */}
+    <div style={{
+      margin:'14px 16px 0', padding:'12px 16px', borderRadius:4,
+      background: dirty ? '#1c1408' : G.card,
+      border: `1px solid ${dirty ? G.gold : G.goldFaint}`,
+      display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, flexWrap:'wrap',
+    }}>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontFamily:'Cinzel,serif', fontSize:10, letterSpacing:'.15em', color: dirty ? G.gold : G.goldDim }}>
+          {dirty ? '● UNSAVED CHANGES' : 'SAVE STATUS'}
+        </div>
+        <div style={{ fontSize:12, color:G.textDim, marginTop:3, lineHeight:1.5 }}>
+          {dirty
+            ? 'Click Save File → replace your mage-sheet.html with the download to keep changes.'
+            : 'This HTML file is your save. Data is stored inside it when you Save File.'}
+        </div>
+      </div>
+      <button onClick={handleSave} style={btnS({ background: dirty?G.goldFaint:'transparent', flexShrink:0, fontSize:12 })}>
+        💾 Save File
+      </button>
+    </div>
+
+    <div style={{ display:'flex', gap:10, padding:'12px 16px', flexWrap:'wrap' }}>
+      <button style={btnS({ background:G.goldFaint })} onClick={handleNew}>+ New Character</button>
+      <button style={btnS()} onClick={handleImport} disabled={busy}>{busy?'Importing…':'↑ Import .mage'}</button>
+    </div>
+
+    <div style={{ padding:'0 16px 32px', maxWidth:620, margin:'0 auto' }}>
+      {sorted.length === 0 && (
+        <div style={{ textAlign:'center', color:G.goldDim, fontSize:15, fontStyle:'italic', marginTop:40 }}>
+          No characters yet.
+        </div>
+      )}
+      {sorted.map(ch => {
+        const s     = ch.sheet;
+        const name  = s?.identity?.name || 'Unnamed Mage';
+        const trad  = s?.identity?.tradition || '—';
+        const arete = (s?.arete||[]).filter(Boolean).length;
+        const ts    = new Date(ch.updatedAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+        return <div key={ch.id} onClick={() => onOpen(ch.id)}
+          style={{ ...card, cursor:'pointer', display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10 }}
+          onMouseEnter={e=>e.currentTarget.style.borderColor=G.goldDim}
+          onMouseLeave={e=>e.currentTarget.style.borderColor=G.border}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontFamily:'Cinzel,serif', fontSize:15, color:G.gold, marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+            <div style={{ fontSize:13, color:G.textDim }}>{trad}</div>
+            <div style={{ display:'flex', gap:14, marginTop:5 }}>
+              <span style={{ fontFamily:'Cinzel,serif', fontSize:9, letterSpacing:'.15em', color:`${G.gold}77` }}>ARETE {arete}</span>
+              <span style={{ fontFamily:'Cinzel,serif', fontSize:9, color:`${G.gold}44` }}>{ts}</span>
+            </div>
+          </div>
+          <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+            <button onClick={e=>{ e.stopPropagation(); exportMage(ch); toast2('Exported ✓'); }}
+              style={{ fontFamily:'Cinzel,serif', fontSize:10, border:`1px solid ${G.gold}44`, borderRadius:3, background:'transparent', color:G.goldDim, padding:'5px 10px', cursor:'pointer' }}>↓</button>
+            <button onClick={e=>{ e.stopPropagation(); handleDelete(ch.id, name); }}
+              style={{ fontFamily:'Cinzel,serif', fontSize:10, border:`1px solid ${G.red}`, borderRadius:3, background:'transparent', color:G.red, padding:'5px 10px', cursor:'pointer' }}>✕</button>
+          </div>
+        </div>;
+      })}
+    </div>
+
+    {toast && <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)', background:'#1a1a0e', border:`1px solid ${G.gold}`, borderRadius:4, padding:'10px 20px', fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:'.15em', color:G.gold, boxShadow:'0 4px 20px #00000088', zIndex:999, maxWidth:'90vw', textAlign:'center' }}>{toast}</div>}
+  </div>;
+}
+
+// ════════════════════════════════════════════════════════════
+// MAGE SHEET
+// ════════════════════════════════════════════════════════════
+function MageSheet({ charId, onBack, onSheetChange }) {
+  const [sheet,       setSheet]       = useState(null);
+  const [tab,         setTab]         = useState(0);
+  const [saveSt,      setSaveSt]      = useState('');
+  const [toast,       setToast]       = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const charRef       = useRef(null);
+  const saveTimer     = useRef(null);
+  const fileDirtyRef  = useRef(false);   // true once any change has been made
+  const isFirstSheet  = useRef(true);    // skip dirty-marking on initial load
+
+  useEffect(() => {
+    const ch = loadAll()[charId] || null;
+    charRef.current = ch;
+    setSheet(mergeSheet(ch?.sheet ?? null));
+  }, [charId]);
+
+  useEffect(() => {
+    if (!sheet || !charRef.current) return;
+    // Skip the very first render (initial load from storage — not a user change)
+    if (isFirstSheet.current) { isFirstSheet.current = false; return; }
+    fileDirtyRef.current = true;
+    setSaveSt('saving');
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const all     = loadAll();
+      const updated = { ...charRef.current, sheet, updatedAt:Date.now() };
+      all[charId]   = updated;
+      charRef.current = updated;
+      saveAll(all);
+      onSheetChange();
+      setSaveSt('saved');
+      setTimeout(() => setSaveSt(''), 1800);
+    }, 500);
+    return () => clearTimeout(saveTimer.current);
+  }, [sheet]);
+
+  const toast2 = msg => { setToast(msg); setTimeout(() => setToast(''), 2500); };
+  const upd      = useCallback((f,v)     => setSheet(p=>({...p,[f]:v})), []);
+  const updN     = useCallback((s,k,v)   => setSheet(p=>({...p,[s]:{...p[s],[k]:v}})), []);
+  const updSkill = useCallback((f,i,k,v) => setSheet(p=>({...p,[f]:p[f].map((x,j)=>j===i?{...x,[k]:v}:x)})), []);
+  const updFree  = useCallback((f,i,k,v) => setSheet(p=>({...p,[f]:p[f].map((x,j)=>j===i?{...x,[k]:v}:x)})), []);
+  const updSph   = useCallback((i,ns)    => setSheet(p=>({...p,spheres:p.spheres.map((s,j)=>j===i?ns:s)})), []);
+  const updWep   = useCallback((i,k,v)   => setSheet(p=>({...p,weapons:p.weapons.map((w,j)=>j===i?{...w,[k]:v}:w)})), []);
+
+  // Flush any pending debounced save immediately to localStorage
+  const flushToStorage = useCallback(() => {
+    if (!sheet || !charRef.current) return;
+    clearTimeout(saveTimer.current);
+    const all     = loadAll();
+    const updated = { ...charRef.current, sheet, updatedAt:Date.now() };
+    all[charId]   = updated;
+    charRef.current = updated;
+    saveAll(all);
+    onSheetChange();
+  }, [sheet, charId, onSheetChange]);
+
+  // Back button: flush storage, then ask if dirty
+  const handleBack = useCallback(() => {
+    flushToStorage();
+    if (fileDirtyRef.current) {
+      setShowConfirm(true);
+    } else {
+      onBack();
+    }
+  }, [flushToStorage, onBack]);
+
+  // Confirm modal actions
+  const confirmSave = useCallback(() => {
+    saveToHtmlFile();           // bakes localStorage (which already has latest sheet) into file
+    fileDirtyRef.current = false;
+    setShowConfirm(false);
+    onBack();
+  }, [onBack]);
+
+  const confirmDiscard = useCallback(() => {
+    fileDirtyRef.current = false;
+    setShowConfirm(false);
+    onBack();
+  }, [onBack]);
+
+  if (!sheet) return <div style={{ minHeight:'100vh', background:G.bg, display:'flex', alignItems:'center', justifyContent:'center', color:G.goldDim, fontFamily:'Cinzel,serif', fontSize:12, letterSpacing:'.2em' }}>LOADING…</div>;
+
+  const {identity:id, physical:phys, social:soc, mental:ment} = sheet;
+
+  const btnS = (extra={}) => ({
+    fontFamily:'Cinzel,serif', fontSize:10, letterSpacing:'.12em',
+    border:`1px solid ${G.gold}44`, borderRadius:3, background:'transparent',
+    color:G.goldDim, padding:'6px 12px', cursor:'pointer', ...extra,
+  });
+
+  const TopBar = <div style={{ position:'sticky', top:0, zIndex:50, background:'#080808ee', backdropFilter:'blur(8px)', borderBottom:`1px solid ${G.goldFaint}` }}>
+    <div style={{ display:'flex', alignItems:'center', padding:'0 10px', gap:8, minHeight:44 }}>
+      <button onClick={handleBack} style={btnS({ borderColor:G.goldFaint, flexShrink:0 })}>← Back</button>
+      <div style={{ flex:1, fontFamily:'Cinzel,serif', fontSize:13, color:G.gold, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'center' }}>
+        {id.name || 'New Character'}
+      </div>
+      <span style={{ fontFamily:'Cinzel,serif', fontSize:8, letterSpacing:'.1em', color:saveSt==='saved'?G.teal:G.goldDim, flexShrink:0, minWidth:48, textAlign:'right' }}>
+        {saveSt==='saving'?'SAVING…':saveSt==='saved'?'AUTO ✓':''}
+      </span>
+      <button onClick={() => { exportMage({...charRef.current, sheet}); toast2('Exported ✓'); }}
+        style={btnS({ color:G.gold, borderColor:`${G.gold}66`, flexShrink:0 })}>↓ .mage</button>
+    </div>
+    <div style={{ display:'flex', borderTop:`1px solid ${G.goldFaint}` }}>
+      {['SHEET I','SHEET II'].map((t,i) => (
+        <button key={i} onClick={() => setTab(i)} style={{ fontFamily:'Cinzel,serif', fontSize:10, letterSpacing:'.12em', border:'none', borderBottom:tab===i?`2px solid ${G.gold}`:'2px solid transparent', background:'transparent', color:tab===i?G.gold:G.goldDim, padding:'10px 16px', cursor:'pointer' }}>{t}</button>
+      ))}
+    </div>
+  </div>;
+
+  // ── Sheet I ───────────────────────────────────────────────
+  const Page1 = <>
+    <div style={card}>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:'7px 28px' }}>
+        {[['Name','name'],['Ambition','ambition'],['Paradigm','paradigm'],['Concept','concept'],['Desire','desire'],['Tradition','tradition'],['Chronicle','chronicle'],['Avatar','avatar'],['Tutor','tutor']].map(([lbl,k]) => (
+          <Field key={k} label={lbl} value={id[k]} onChange={v=>updN('identity',k,v)} flex="1 1 170px"/>
+        ))}
+      </div>
+    </div>
+
+    <div style={card}>
+      <Divider>Attributes</Divider>
+      <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
+        {[['Physical','physical',phys],['Social','social',soc],['Mental','mental',ment]].map(([lbl,sec,st]) => (
+          <div key={sec} style={{ flex:'1 1 180px' }}>
+            <div style={{ fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:'.2em', color:G.gold, textAlign:'center', marginBottom:8, fontWeight:700 }}>{lbl}</div>
+            {Object.entries(st).map(([k,v]) => (
+              <div key={k} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                <span style={{ fontSize:14, color:G.text }}>{k}</span>
+                <Dots max={5} value={v} onChange={val=>updN(sec,k,val)}/>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div style={card}>
+      <Divider>Skills</Divider>
+      <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
+        {[['physSkills',sheet.physSkills],['socSkills',sheet.socSkills],['mentSkills',sheet.mentSkills]].map(([field,skills]) => (
+          <div key={field} style={{ flex:'1 1 200px' }}>
+            {skills.map((s,i) => (
+              <SkillRow key={s.label} label={s.label} spec={s.spec} value={s.value}
+                onSpec={v=>updSkill(field,i,'spec',v)} onChange={v=>updSkill(field,i,'value',v)}/>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:12 }}>
+      {[['Chronicle Tenets','chronicleTenets'],['Touchstones & Convictions','touchstones'],['Tradition Tenets','tradTenets']].map(([title,field]) => (
+        <div key={field} style={{ ...card, flex:'1 1 220px', marginBottom:0 }}>
+          <div style={{ fontFamily:'Cinzel,serif', fontSize:10, letterSpacing:'.18em', color:G.gold, fontWeight:700, marginBottom:7 }}>{title.toUpperCase()}</div>
+          <Lines values={sheet[field]} onChange={v=>upd(field,v)}/>
+        </div>
+      ))}
+    </div>
+
+    <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'flex-start' }}>
+      <div style={{ ...card, flex:'2 1 400px' }}>
+        <Divider>Spheres</Divider>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:10 }}>
+          {sheet.spheres.map((s,i) => <SphereBlock key={i} sphere={s} onUpdate={ns=>updSph(i,ns)}/>)}
+        </div>
+      </div>
+      <div style={{ flex:'1 1 200px', display:'flex', flexDirection:'column', gap:10 }}>
+        {[['Health','health',G.gold,'square'],['Willpower','willpower',G.blue,'square']].map(([lbl,field,col,shape]) => (
+          <div key={field} style={card}><span style={statLbl}>{lbl}</span><DamageTrack values={sheet[field]} onChange={v=>upd(field,v)} shape={shape} color={col}/></div>
+        ))}
+        {[['Arete','arete',G.purple,'square'],['Quintessence','quint',G.teal,'square']].map(([lbl,field,col,shape]) => (
+          <div key={field} style={card}><span style={statLbl}>{lbl}</span><Track values={sheet[field]} onChange={v=>upd(field,v)} shape={shape} color={col}/></div>
+        ))}
+        <div style={card}><span style={statLbl}>Paradox</span><DamageTrack values={sheet.paradox} onChange={v=>upd('paradox',v)} shape="circle" color={G.red}/></div>
+        <div style={card}>
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+            <Field label="Power Bonus"   value={sheet.powerBonus}  onChange={v=>upd('powerBonus',v)}  flex="1 1 80px" fs={12}/>
+            <Field label="Arete Re-Roll" value={sheet.areteReroll} onChange={v=>upd('areteReroll',v)} flex="1 1 80px" fs={12}/>
+          </div>
+        </div>
+      </div>
+    </div>
+  </>;
+
+  // ── Sheet II ──────────────────────────────────────────────
+  const xpRem = Math.max(0, Number(sheet.xpTotal||0) - Number(sheet.xpSpent||0));
+
+  const Page2 = <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'flex-start' }}>
+    <div style={{ flex:'0 0 260px', display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={card}>
+        <Divider>Advantages</Divider>
+        {[['BACKGROUNDS','backgrounds','Background…'],['MERITS','merits','Merit…'],['FLAWS','flaws','Flaw…']].map(([lbl,field,ph]) => <>
+          <div key={lbl} style={{ fontFamily:'Cinzel,serif', fontSize:9, letterSpacing:'.18em', color:G.goldDim, margin:'8px 0 6px' }}>{lbl}</div>
+          {sheet[field].map((r,i) => <FreeRow key={i} name={r.name} value={r.value} placeholder={ph}
+            onName={v=>updFree(field,i,'name',v)} onChange={v=>updFree(field,i,'value',v)}/>)}
+        </>)}
+      </div>
+      <div style={card}>
+        <Divider>Haven</Divider>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8, flexWrap:'wrap' }}>
+          <label style={{ display:'flex', gap:5, alignItems:'center', cursor:'pointer', fontSize:13, color:G.textDim }}>
+            <input type="checkbox" checked={sheet.noHaven} onChange={e=>upd('noHaven',e.target.checked)} style={{ accentColor:G.gold }}/>
+            No Haven?
+          </label>
+          <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+            <span style={{ fontFamily:'Cinzel,serif', fontSize:9, color:G.goldDim }}>RATING</span>
+            <Dots max={5} value={sheet.havenRating} onChange={v=>upd('havenRating',v)}/>
+          </div>
+        </div>
+        {sheet.havenRows.map((h,i) => <FreeRow key={i} name={h.name} value={h.value} placeholder="Haven trait…"
+          onName={v=>updFree('havenRows',i,'name',v)} onChange={v=>updFree('havenRows',i,'value',v)}/>)}
+      </div>
+      <div style={card}>
+        <Divider>Experience</Divider>
+        <div style={{ display:'flex', gap:8 }}>
+          {[['Total','xpTotal'],['Spent','xpSpent']].map(([lbl,field]) => (
+            <div key={field} style={{ flex:1 }}>
+              <span style={statLbl}>{lbl}</span>
+              <input type="number" value={sheet[field]} min={0} onChange={e=>upd(field,e.target.value)}
+                style={{ width:'100%', background:'transparent', border:'none', borderBottom:`1px solid ${G.goldFaint}`, color:G.gold, fontFamily:'Cinzel,serif', fontSize:20, outline:'none', textAlign:'center', padding:'1px 0', boxSizing:'border-box' }}/>
+            </div>
+          ))}
+          <div style={{ flex:1 }}>
+            <span style={statLbl}>Remaining</span>
+            <div style={{ fontFamily:'Cinzel,serif', fontSize:20, color:G.teal, textAlign:'center', borderBottom:`1px solid ${G.teal}44`, padding:'2px 0' }}>{xpRem}</div>
+          </div>
+        </div>
+      </div>
+      <div style={card}>
+        <Divider>Weapons</Divider>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 50px', gap:'0 8px', marginBottom:4 }}>
+          <span style={{ fontFamily:'Cinzel,serif', fontSize:9, color:G.goldDim, letterSpacing:'.15em' }}>WEAPON</span>
+          <span style={{ fontFamily:'Cinzel,serif', fontSize:9, color:G.goldDim }}>DMG</span>
+        </div>
+        {sheet.weapons.map((w,i) => (
+          <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 50px', gap:'0 8px', marginBottom:4 }}>
+            <input value={w.name} onChange={e=>updWep(i,'name',e.target.value)} style={{ background:'transparent', border:'none', borderBottom:`1px solid ${G.goldFaint}`, color:G.text, fontSize:13, outline:'none', padding:'1px 2px' }}/>
+            <input value={w.dmg}  onChange={e=>updWep(i,'dmg',e.target.value)}  style={{ background:'transparent', border:'none', borderBottom:`1px solid ${G.goldFaint}`, color:G.text, fontSize:13, outline:'none', padding:'1px 2px', textAlign:'center' }}/>
+          </div>
+        ))}
+      </div>
+    </div>
+    <div style={{ flex:'1 1 400px' }}>
+      <div style={card}>
+        <Divider>Biography</Divider>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'5px 20px', marginBottom:10 }}>
+          {[['True Age','trueAge','0 0 90px'],['Apparent Age','apparentAge','0 0 110px'],['Date of Birth','dob','0 0 130px'],['Date of Awakening','awakening','0 0 145px']].map(([lbl,f,flex]) => (
+            <Field key={f} label={lbl} value={sheet[f]} onChange={v=>upd(f,v)} flex={flex} fs={12}/>
+          ))}
+        </div>
+        <TArea label="Appearance"              value={sheet.appearance}   onChange={v=>upd('appearance',v)}   rows={3}/>
+        <TArea label="Distinguishing Features" value={sheet.distFeatures} onChange={v=>upd('distFeatures',v)} rows={3}/>
+        <TArea label="History"                 value={sheet.history}      onChange={v=>upd('history',v)}      rows={9}/>
+      </div>
+      <div style={card}><Divider>Possessions</Divider><TArea value={sheet.possessions} onChange={v=>upd('possessions',v)} rows={6}/></div>
+      <div style={card}><Divider>Notes</Divider><TArea value={sheet.notes} onChange={v=>upd('notes',v)} rows={6}/></div>
+    </div>
+  </div>;
+
+  return <div style={{ minHeight:'100vh', background:G.bg, backgroundImage:'radial-gradient(ellipse at 15% 10%,#1a1208 0%,transparent 55%)' }}>
+    {TopBar}
+    <div style={{ padding:'16px 16px 48px', maxWidth:980, margin:'0 auto' }}>
+      {tab===0 ? Page1 : Page2}
+    </div>
+    {toast && <div style={{ position:'fixed', bottom:24, left:'50%', transform:'translateX(-50%)', background:'#1a1a0e', border:`1px solid ${G.gold}`, borderRadius:4, padding:'10px 20px', fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:'.15em', color:G.gold, boxShadow:'0 4px 20px #00000088', zIndex:999 }}>{toast}</div>}
+
+    {/* ── Save confirmation modal ── */}
+    {showConfirm && (
+      <div style={{ position:'fixed', inset:0, background:'#000000bb', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200, padding:20 }}
+        onClick={e => { if (e.target === e.currentTarget) setShowConfirm(false); }}>
+        <div style={{ background:'#0e0e0e', border:`1px solid ${G.gold}`, borderRadius:6, padding:'32px 28px', maxWidth:400, width:'100%', textAlign:'center', boxShadow:`0 0 60px ${G.gold}22` }}>
+
+          <div style={{ fontFamily:'Cinzel,serif', fontSize:14, color:G.gold, letterSpacing:'.2em', marginBottom:14 }}>
+            SAVE CHANGES?
+          </div>
+
+          <div style={{ fontFamily:'EB Garamond,serif', fontSize:15, color:G.textDim, lineHeight:1.65, marginBottom:8 }}>
+            Save all changes to the HTML file before returning to the character list?
+          </div>
+          <div style={{ fontFamily:'Cinzel,serif', fontSize:9, letterSpacing:'.12em', color:`${G.gold}55`, marginBottom:28 }}>
+            DOWNLOADS AN UPDATED MAGE-SHEET.HTML
+          </div>
+
+          <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
+            <button onClick={confirmSave}
+              style={{ fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:'.15em', border:`1px solid ${G.gold}`, borderRadius:3, background:G.goldFaint, color:G.gold, padding:'12px 28px', cursor:'pointer', minWidth:140 }}>
+              💾 Yes, Save File
+            </button>
+            <button onClick={confirmDiscard}
+              style={{ fontFamily:'Cinzel,serif', fontSize:11, letterSpacing:'.15em', border:`1px solid ${G.goldFaint}`, borderRadius:3, background:'transparent', color:G.goldDim, padding:'12px 28px', cursor:'pointer', minWidth:140 }}>
+              No, Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>;
+}
+
+// ════════════════════════════════════════════════════════════
+// APP ROOT
+// ════════════════════════════════════════════════════════════
+function App() {
+  const [screen,   setScreen]   = useState('list');
+  const [activeId, setActiveId] = useState(null);
+  const [dirty,    setDirty]    = useState(false);
+
+  useEffect(() => {
+    const h = e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [dirty]);
+
+  return screen === 'list'
+    ? <CharacterList onOpen={id => { setActiveId(id); setScreen('sheet'); }} onDirty={setDirty}/>
+    : <MageSheet charId={activeId} onBack={() => { setScreen('list'); setActiveId(null); }} onSheetChange={() => setDirty(true)}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(<App/>);
+</script>
+</body>
+</html>
