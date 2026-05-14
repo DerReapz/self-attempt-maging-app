@@ -15,6 +15,11 @@ style.textContent = `
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: #0e0e0e; }
   ::-webkit-scrollbar-thumb { background: #c8a84b44; border-radius: 3px; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  @media (orientation: landscape) and (max-height: 480px) {
+    #mage-nav button { padding: 4px 2px 5px !important; gap: 1px !important; }
+    #mage-nav { min-height: 40px; }
+  }
 `;
 document.head.appendChild(style);
 
