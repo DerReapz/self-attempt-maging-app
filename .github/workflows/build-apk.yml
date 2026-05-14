@@ -15,12 +15,15 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 17
       - run: npm ci
       - run: npm run build
       - run: npm install -g @capacitor/cli
       - run: npx cap add android || true
       - run: npx cap sync android
+      - run: npx cap sync android
+      - run: sed -i 's/JavaVersion\.VERSION_21/JavaVersion.VERSION_17/g' android/app/build.gradle
+      - run: chmod +x android/gradlew
       - run: chmod +x android/gradlew
       - run: cd android && ./gradlew assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
