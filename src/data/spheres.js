@@ -1,0 +1,572 @@
+export const SPHERE_DATA = [
+  {
+    id: 'corr',
+    name: 'Correspondence',
+    icon: '⬡',
+    color: '#4a9e8a',
+    meta: 'Pattern Sphere · Space & Distance',
+    blurb: 'All points in space are equally close — or equally far. The Sphere of Correspondence reveals and manipulates the hidden connections between places, allowing a Master to fold space like paper or be in two locations at once. The Virtual Adepts see this as network topology; the Euthanatos as fate-threads linking all things.',
+    traditions: 'Virtual Adepts, Euthanatos',
+    overview: ['Sense connections, find items','Sense remotely, limited wards','Teleport small objects, windows','Full teleport, co-location','Collapse space, alter topology'],
+    levels: [
+      {
+        dots: '●', name: 'Initiate', title: 'Immediate Spatial Perception',
+        body: 'The mage gains an intuitive sense of spatial connections, distances, and links. She can feel when she is being watched across distance, detect items she has a strong connection to, and sense whether two places are "close" in some non-physical sense.',
+        examples: [
+          'Feel a lost talisman\'s direction and rough distance.',
+          'Sense that a scrying spell is being used to observe the mage.',
+          'Detect that two locations share a ley-line connection.',
+          'Know instinctively which direction home is, regardless of blindfolds or winding paths.',
+        ],
+      },
+      {
+        dots: '●●', name: 'Apprentice', title: 'Sense & Touch at Range / Basic Warding',
+        body: 'The mage extends her perceptions to a remote location, experiencing it as if she were physically present. She can also create small spatial wards and sense breaches in them. With Prime 2, she can create a sensory window — a "spy hole" in space.',
+        examples: [
+          'See and hear inside a locked room across the building.',
+          'Extend a hand through a spatial fold to pick up a nearby object without moving.',
+          'Ward a room so the mage feels any intrusion, regardless of where she is.',
+          'Check whether a known location is occupied before going there.',
+        ],
+      },
+      {
+        dots: '●●●', name: 'Disciple', title: 'Teleport Objects / Correspondence Gate',
+        body: 'The mage can move objects or herself across distances, create two-way spatial windows large enough to pass through, or fold space so two distant points share the same boundary. Physical travel between locations becomes optional.',
+        examples: [
+          'Teleport herself from a rooftop in Manhattan to her Chantry in London (vulgar without witnesses).',
+          'Open a shimmering portal between two rooms so allies can pass freely.',
+          'Instantly retrieve a weapon stored across the city.',
+          'Redirect a thrown punch so it strikes the attacker from behind.',
+        ],
+      },
+      {
+        dots: '●●●●', name: 'Adept', title: 'Co-Location / Dimensional Overlap',
+        body: 'The mage can exist in multiple places simultaneously, overlap spaces so that two rooms occupy the same coordinates, or create extradimensional pockets. Combat becomes supremely difficult against such a mage.',
+        examples: [
+          'Attend two meetings in different cities at the same moment.',
+          'Create a pocket dimension inside a briefcase large enough to hold an apartment.',
+          'Overlap an enemy\'s location with the centre of a burning building.',
+          'Teleport a car out from under fleeing criminals in real time.',
+        ],
+      },
+      {
+        dots: '●●●●●', name: 'Master', title: 'Spatial Mastery / Alter Topology',
+        body: 'Distance and location become matters of preference. The Master can collapse all space between two points to nothing, create permanent spatial distortions, or cut a location off from all spatial access entirely.',
+        examples: [
+          'Permanently connect two Chantries on opposite continents as adjacent rooms.',
+          'Seal a Nephandic fortress into spatial isolation — no door leads to or from it.',
+          'Make it so that walking north in a building always returns you to the entrance.',
+          'Fold the interior of a skyscraper so it is spatially infinite.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'entr',
+    name: 'Entropy',
+    icon: '☽',
+    color: '#7a3a7a',
+    meta: 'Entropy Sphere · Fate, Chaos & Decay',
+    blurb: 'Everything falls apart. The Sphere of Entropy governs the forces of dissolution — the arrow of time\'s degradation, the chaos that underlies fate, and the probability currents that determine which futures arrive. Euthanatos see it as the holy wheel of destruction and rebirth; the Cult of Ecstasy experience it as the wildness beneath ordered sensation.',
+    traditions: 'Euthanatos, Cult of Ecstasy',
+    overview: ['Sense fate lines, detect flaws','Nudge probability, minor curses','Break objects, create luck zones','Accelerate/arrest decay, unravel','Destroy anything, rewrite fate'],
+    levels: [
+      {
+        dots: '●', name: 'Initiate', title: 'Sense Fate & Flaw',
+        body: 'The mage perceives the threads of fate and entropy woven through all things: weakest points in structures, lifelines shortening toward death, and the weight of luck hanging over people.',
+        examples: [
+          'Spot the hairline crack that will shatter a bridge under load.',
+          'Sense that a person is fated to die within a week.',
+          'Identify the structural weak point in a vault door.',
+          'Read the "luck" around a gambler — hot or cold streak.',
+        ],
+      },
+      {
+        dots: '●●', name: 'Apprentice', title: 'Control Probability / Minor Curses',
+        body: 'The mage nudges probability in her favour or against a target. She can bring unlikely events to pass, make a reliable mechanism fail, or curse someone with persistent bad luck.',
+        examples: [
+          'Ensure the coin lands heads every time — or ensure it never does.',
+          'Cause a car\'s brakes to fail at the worst possible moment.',
+          'Give an ally the roll of "always slightly luckier" in a fight.',
+          'Make an enemy fumble — every step slightly wrong, every lock stiff.',
+        ],
+      },
+      {
+        dots: '●●●', name: 'Disciple', title: 'Destroy & Unravel / Luck Zones',
+        body: 'Active destruction becomes possible. The mage can accelerate decay in objects or living beings, rot away structures in moments, create zones of extreme luck or misfortune, or cause complex systems to catastrophically fail.',
+        examples: [
+          'Cause a steel door to rust apart in seconds.',
+          'Create a 10-metre radius where all ranged attacks go wildly astray.',
+          'Accelerate a wound to gangrenous collapse (aggravated damage on living targets).',
+          'Make an enemy\'s armour crumble and weapons jam simultaneously.',
+        ],
+      },
+      {
+        dots: '●●●●', name: 'Adept', title: 'Accelerate / Arrest Decay / Unravel Patterns',
+        body: 'The mage can freeze entropic processes — preserving a dying person indefinitely — or catastrophically accelerate them, reducing a living creature to a withered corpse in heartbeats. She can unravel magical patterns partially.',
+        examples: [
+          'Arrest the decomposition of a body, preserving it fresh for years.',
+          'Age a living tree to a rotted stump in a single turn.',
+          'Weaken an opponent\'s magical shield by unravelling its Pattern.',
+          'Place a person in perfect preservation — neither healing nor dying.',
+        ],
+      },
+      {
+        dots: '●●●●●', name: 'Master', title: 'Destroy Anything / Rewrite Fate',
+        body: 'The Master of Entropy can unmake virtually anything — Patterns, spirits, memories, even magical constructs — and rewrite the threads of fate itself. He can dictate who lives and dies on a grand scale.',
+        examples: [
+          'Instantly destroy any unliving Pattern (dissolve a Construct, unmake a powerful fetish).',
+          'Decree that a city block will suffer catastrophic misfortune for one year.',
+          'Rewrite a person\'s fate threads to guarantee a specific death — or survival.',
+          'Cause an entire institution to catastrophically collapse through accelerated entropic cascade.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'forc',
+    name: 'Forces',
+    icon: '⚡',
+    color: '#c84a20',
+    meta: 'Pattern Sphere · Energy & Physical Forces',
+    blurb: 'The raw power of the physical universe — fire, lightning, gravity, kinetic force, radiation, sound — all fall under the Sphere of Forces. Sons of Ether model it with equations; Akashic Brothers flow with it as chi. It is the most immediately spectacular Sphere, and among the most dangerous.',
+    traditions: 'Sons of Ether, Akashic Brotherhood',
+    overview: ['Perceive energy fields','Control minor energy levels','Redirect / amplify forces','Massive energy creation/control','Alter physical constants'],
+    levels: [
+      {
+        dots: '●', name: 'Initiate', title: 'Perceive Forces',
+        body: 'The mage perceives all forms of energy with heightened clarity: she sees in the infrared and ultraviolet, hears ultrasound, senses magnetic fields, detects radiation, and can gauge the strength of any physical force around her.',
+        examples: [
+          'See the heat signatures of living bodies through a wall in darkness.',
+          'Detect an active electrical current without touching the wire.',
+          'Sense the trajectory and force of an incoming attack a moment early.',
+          'Perceive radio transmissions as vague impressions of meaning.',
+        ],
+      },
+      {
+        dots: '●●', name: 'Apprentice', title: 'Control Minor Forces',
+        body: 'The mage can now affect forces directly on a small scale: dimming lights, creating sparks, altering the temperature of a room, generating a mild wind, or redirecting a small electrical current.',
+        examples: [
+          'Kill all lights in a building by grounding out the electrical grid.',
+          'Warm a frozen lock enough to open it.',
+          'Create a strong enough gust to blow papers from a desk across the room.',
+          'Silence a specific area by cancelling sound waves.',
+        ],
+      },
+      {
+        dots: '●●●', name: 'Disciple', title: 'Redirect & Amplify Forces / Combat Elemental',
+        body: 'Real damage becomes possible. The mage can hurl bolts of lightning, create walls of fire, redirect kinetic force, negate gravity locally, or generate hurricane-force winds.',
+        examples: [
+          'Fire a bolt of lightning that inflicts 6 dice of aggravated damage.',
+          'Reverse the kinetic force of a speeding vehicle, stopping it instantly.',
+          'Walk on air by locally negating gravity.',
+          'Create a column of fire 10 metres tall as a distraction or barrier.',
+        ],
+      },
+      {
+        dots: '●●●●', name: 'Adept', title: 'Massive Force Control / Alter Physical Laws',
+        body: 'The mage wields forces on a scale that can level buildings — earthquakes, tornadoes, nuclear-level heat, or the reversal of gravity across a city block.',
+        examples: [
+          'Trigger a localised earthquake strong enough to collapse a city block.',
+          'Generate a gravitational field strong enough to crush steel.',
+          'Make oneself invisible by perfectly bending light around the body.',
+          'Create a nuclear-temperature sphere of plasma (wildly vulgar, catastrophic).',
+        ],
+      },
+      {
+        dots: '●●●●●', name: 'Master', title: 'Alter Physical Constants',
+        body: 'The Master can permanently or semi-permanently alter the physical constants governing force in a region: the speed of light, the gravitational constant, the strength of electromagnetism.',
+        examples: [
+          'Lower the speed of light in a pocket of space, causing time dilation.',
+          'Create a permanent zero-gravity zone in a Chantry.',
+          'Make all fire within a mile radius burn cold instead of hot.',
+          'Render an area permanently dark by preventing photons from propagating within it.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'life',
+    name: 'Life',
+    icon: '✦',
+    color: '#3a8a3a',
+    meta: 'Pattern Sphere · Living Organisms',
+    blurb: 'All living things share a pattern of vital force — the Sphere of Life reads and rewrites that pattern. Where Matter governs the inert, Life governs the animate. Verbena healers and shapeshifters, Dreamspeaker shamans who walk as animals, and Akashic monks perfecting their bodies all master this Sphere.',
+    traditions: 'Verbena, Dreamspeakers',
+    overview: ['Sense life forces, diagnose','Heal, simple body change','Shapeshift self, heal lethal on self','Heal others, transform others, create life','Rewrite biology, de/evolve species'],
+    levels: [
+      {
+        dots: '●', name: 'Initiate', title: 'Sense Life',
+        body: 'The mage perceives life forces and patterns with great precision: diagnosing disease, sensing the health of any living thing, detecting hidden organisms, and reading the emotional states imprinted on a body.',
+        examples: [
+          'Diagnose cancer in its early stages with a touch.',
+          'Detect all living creatures (including hidden ones) within a building.',
+          'Sense whether a person has recently experienced extreme fear or violence.',
+          'Read the age, health, and fertility of any organism at a glance.',
+        ],
+      },
+      {
+        dots: '●●', name: 'Apprentice', title: 'Heal, Strengthen & Minor Transform',
+        body: 'The mage can heal bashing and lethal wounds, enhance a creature\'s physical attributes, or make minor alterations to a living body — changing hair colour, altering fingerprints, mending broken bones.',
+        examples: [
+          'Heal a gunshot wound completely in minutes (lethal damage).',
+          'Enhance an ally\'s strength and reflexes for a scene.',
+          'Alter her own fingerprints and retinal pattern to evade biometric security.',
+          'Cause a plant to grow at 100× normal speed.',
+        ],
+      },
+      {
+        dots: '●●●', name: 'Disciple', title: 'Shapeshift Self / Advanced Healing',
+        body: 'The mage can radically reshape her own body — taking animal forms, growing claws, altering her gender, or transforming into a replica of another person.',
+        examples: [
+          'Transform into a wolf, eagle, or dolphin for extended periods.',
+          'Heal lethal wounds on herself rapidly.',
+          'Grow functional gills and webbed hands to breathe underwater.',
+          'Reshape her face and body to perfectly impersonate another person.',
+        ],
+      },
+      {
+        dots: '●●●●', name: 'Adept', title: 'Heal Others / Transform Others / Create Life',
+        body: 'The mage can now extend her Life Effects to other living beings — healing their wounds including aggravated damage, reshaping or transforming them against their will, or creating new creatures.',
+        examples: [
+          'Heal a dying ally\'s aggravated wounds from fire or supernatural attack.',
+          'Transform a hostile Technocrat into a harmless rabbit.',
+          'Infect a target with a virulent disease conjured from nothing.',
+          'Rewrite a person\'s genetic pattern to cure a hereditary disease permanently.',
+        ],
+      },
+      {
+        dots: '●●●●●', name: 'Master', title: 'Rewrite Biology / Evolve Species',
+        body: 'The Master of Life can alter the fundamental template of a species, create entirely new life forms, evolve or devolve creatures, or grant near-immortality by perfectly stabilising a living Pattern.',
+        examples: [
+          'Permanently rewrite the human genome to grant a population new capabilities.',
+          'Create a new species of plant or animal that propagates naturally.',
+          'Grant true biological immortality — the body no longer ages or degrades.',
+          'Evolve a lesser creature to human-level intelligence and self-awareness.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'matt',
+    name: 'Matter',
+    icon: '◈',
+    color: '#6a6a9a',
+    meta: 'Pattern Sphere · Inert & Unliving Matter',
+    blurb: 'The counterpart to Life, Matter governs all non-living physical substance — stone, metal, plastic, gas, liquid. Sons of Ether approach it through chemistry and physics; Order of Hermes through elemental theory. A Master of Matter can reshape reality\'s physical substrate at will.',
+    traditions: 'Sons of Ether, Order of Hermes',
+    overview: ['Analyse material composition','Alter surface, basic shaping','Transform materials, transmute','Complex manufacture, phase','Rewrite atomic properties'],
+    levels: [
+      {
+        dots: '●', name: 'Initiate', title: 'Matter Perception',
+        body: 'The mage can analyse any material at a glance — its composition, structural integrity, purity, age, and origin. She can detect hidden compartments, concealed weapons, or poisonous substances by touch or close examination.',
+        examples: [
+          'Identify the exact alloy composition of a metal by touching it.',
+          'Detect a hollow space behind a wall or inside a container.',
+          'Determine whether a substance is poisonous or adulterated.',
+          'Read the age and origin of an artefact from its material makeup.',
+        ],
+      },
+      {
+        dots: '●●', name: 'Apprentice', title: 'Basic Transmutation',
+        body: 'The mage can alter the surface properties of materials — changing colour, texture, rigidity, or temperature — and perform simple shaping of soft or malleable substances.',
+        examples: [
+          'Change a grey concrete wall to polished marble in appearance.',
+          'Soften clay or wax and reshape it at will.',
+          'Make a surface frictionless or adhesive.',
+          'Harden a fabric to the rigidity of armour plate temporarily.',
+        ],
+      },
+      {
+        dots: '●●●', name: 'Disciple', title: 'Transform & Transmute',
+        body: 'The mage can fundamentally change one material into another — lead into gold, wood into steel, air into water. She can also reshape solid matter into complex forms and alter its physical properties throughout its volume.',
+        examples: [
+          'Transmute a steel door into brittle glass, then shatter it.',
+          'Convert water in a room to oxygen, instantly depressurising it.',
+          'Reshape iron chains into a functioning lock and key.',
+          'Turn a wooden club into a razor-edged steel blade in her hands.',
+        ],
+      },
+      {
+        dots: '●●●●', name: 'Adept', title: 'Complex Manufacture / Phase',
+        body: 'The mage can create intricate manufactured objects from raw materials, phase matter to pass through solid objects, or create substances with properties that violate normal physics.',
+        examples: [
+          'Manufacture a working firearm from raw metal ore in moments.',
+          'Phase a person or object through a solid wall.',
+          'Create a metal harder than diamond or a liquid that flows uphill.',
+          'Assemble an explosive device from inert materials instantly.',
+        ],
+      },
+      {
+        dots: '●●●●●', name: 'Master', title: 'Rewrite Atomic Properties',
+        body: 'The Master can alter the fundamental atomic and subatomic properties of matter — changing how elements interact, creating stable new elements, or causing matter to behave in ways that rewrite physical law.',
+        examples: [
+          'Create a stable room-temperature superconductor from common materials.',
+          'Make matter selectively permeable — passing X-rays but blocking visible light.',
+          'Convert matter to antimatter (catastrophically destructive, near-suicidal).',
+          'Create self-replicating smart matter that assembles itself into structures.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'mind',
+    name: 'Mind',
+    icon: '◎',
+    color: '#4a6aaa',
+    meta: 'Subtle Sphere · Consciousness & Psyche',
+    blurb: 'The Sphere of Mind encompasses all of consciousness: thought, perception, memory, emotion, and the dreaming self. Akashic Brothers cultivate the still mind; the Cult of Ecstasy dissolve its boundaries in sensation; Virtual Adepts model it as information processing. The frightening truth is that reality itself may be constructed from Mind.',
+    traditions: 'Akashic Brotherhood, Cult of Ecstasy',
+    overview: ['Sense minds, read surface thoughts','Probe deep, project thoughts','Alter memories, astral travel','Dominate will, mass illusions','Create/destroy minds, Dreamwalk'],
+    levels: [
+      {
+        dots: '●', name: 'Initiate', title: 'Sense Minds & Thoughts',
+        body: 'The mage gains heightened empathic and telepathic perception. She can sense the emotional states of those nearby, detect whether a mind is present (useful for spotting hidden people), and read surface thoughts that the subject is actively thinking.',
+        examples: [
+          'Sense that a person is lying before they finish the sentence.',
+          'Detect a hidden assassin by sensing his murderous intent.',
+          'Feel the general emotional tone of a crowd.',
+          'Read the surface thought a person is focused on at this moment.',
+        ],
+      },
+      {
+        dots: '●●', name: 'Apprentice', title: 'Probe Deep / Project Thoughts',
+        body: 'The mage can delve into the deeper layers of a mind — accessing memories, beliefs, fears, and secrets. She can also project thoughts, emotions, or sensory impressions into another mind.',
+        examples: [
+          'Extract a specific memory from a subject\'s mind (the location of the safe, the code to the vault).',
+          'Project intense terror directly into an opponent\'s mind.',
+          'Send a silent telepathic message to an ally across the room.',
+          'Detect whether a person has been magically influenced or mind-controlled.',
+        ],
+      },
+      {
+        dots: '●●●', name: 'Disciple', title: 'Alter Memories / Astral Travel',
+        body: 'The mage can rewrite memories, alter personality traits, or project her consciousness out of her body entirely (astral projection). She can create persistent illusions and alter how a mind processes reality.',
+        examples: [
+          'Erase all memory of a meeting from every witness.',
+          'Project her consciousness to scout a location astrally while her body remains safe.',
+          'Create a vivid, persistent hallucination indistinguishable from reality.',
+          'Implant a post-hypnotic command that triggers on a specific cue.',
+        ],
+      },
+      {
+        dots: '●●●●', name: 'Adept', title: 'Dominate Will / Mass Illusions',
+        body: 'The mage can directly control another\'s actions against their will, project illusions that affect multiple people simultaneously, or reach across vast distances to affect minds she has previously touched.',
+        examples: [
+          'Puppet a Technocrat agent, using him against his own organisation.',
+          'Create a city-block-wide illusion of a disaster that makes everyone flee.',
+          'Dominate an entire boardroom into signing whatever agreement she names.',
+          'Reach across the city to re-access a mind she has previously touched.',
+        ],
+      },
+      {
+        dots: '●●●●●', name: 'Master', title: 'Create / Destroy Minds / Dreamwalk',
+        body: 'The Master of Mind can create entirely new minds, permanently destroy existing ones, walk freely through the dreamscapes of sleeping subjects, or reshape the fundamental structure of consciousness itself.',
+        examples: [
+          'Create an artificial consciousness that persists independently.',
+          'Permanently destroy a mind, leaving the body an empty shell.',
+          'Walk through another\'s dreamscape and rewrite it as a therapeutic or destructive environment.',
+          'Permanently alter the fundamental personality of a subject at the deepest level.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'prim',
+    name: 'Prime',
+    icon: '✶',
+    color: '#c9a84c',
+    meta: 'Primordial Sphere · Quintessence & Raw Magic',
+    blurb: 'Prime is magic itself — the study of Quintessence, the raw stuff of creation that underlies all Pattern Spheres. Every magical Effect requires Prime at some level; a Master of Prime can fuel, enhance, or destroy any magical working. The Order of Hermes knows it as the Prima Materia; the Celestial Chorus as the divine breath that animates creation.',
+    traditions: 'Order of Hermes, Celestial Chorus',
+    overview: ['Sense Quintessence, Tass','Tap Nodes, fuel Effects','Create Tass, enchant objects','Erase magic, Prime attacks','Create/destroy Nodes, rewrite Patterns'],
+    levels: [
+      {
+        dots: '●', name: 'Initiate', title: 'Sense Quintessence & Tass',
+        body: 'The mage can perceive the flow of Quintessence through the world — detecting Nodes, Tass, enchanted objects, and the raw magical charge of people and places. She can also perceive the Resonance of a magical Effect.',
+        examples: [
+          'Detect a hidden Node in the basement of a mundane building.',
+          'Identify Tass — Quintessence crystallised in a physical object.',
+          'Sense the magical Resonance of a spell or enchanted item.',
+          'Determine how much Quintessence a mage currently carries.',
+        ],
+      },
+      {
+        dots: '●●', name: 'Apprentice', title: 'Tap Nodes / Fuel Effects',
+        body: 'The mage can draw Quintessence directly from Nodes and Tass, store it in her Pattern, and use it to fuel magical Effects. She can also sense the flow of magical energy through the Tellurian.',
+        examples: [
+          'Draw 3 points of Quintessence from a Node in a single scene.',
+          'Absorb Quintessence from a piece of Tass, destroying it.',
+          'Use stored Quintessence to reduce the difficulty of a vulgar Effect.',
+          'Sense when a Node has been tapped or drained.',
+        ],
+      },
+      {
+        dots: '●●●', name: 'Disciple', title: 'Create Tass / Enchant Objects',
+        body: 'The mage can crystallise Quintessence into Tass and permanently enchant objects with magical properties. She can also create Periapts — magical containers that hold Quintessence.',
+        examples: [
+          'Crystallise spare Quintessence into a piece of Tass (a golden coin, a glowing crystal).',
+          'Enchant a weapon to harm spirits as if it were a fetish.',
+          'Create a Periapt capable of storing up to 5 points of Quintessence.',
+          'Imbue an object with a persistent magical Effect.',
+        ],
+      },
+      {
+        dots: '●●●●', name: 'Adept', title: 'Erase Magic / Prime Attacks',
+        body: 'The mage can strip magic from Effects and objects, fire bolts of raw Quintessence that harm spirits and bypass mundane defences, and permanently drain Nodes.',
+        examples: [
+          'Dispel another mage\'s active Effect by unravelling its Quintessence.',
+          'Fire a bolt of pure Quintessence that inflicts aggravated damage and harms spirits.',
+          'Permanently drain a Node, destroying its magical potential.',
+          'Strip the enchantment from a fetish or magical artefact.',
+        ],
+      },
+      {
+        dots: '●●●●●', name: 'Master', title: 'Create/Destroy Nodes / Rewrite Patterns',
+        body: 'The Master of Prime can create new Nodes where none existed, destroy existing ones permanently, and rewrite the Pattern-level magical properties of any person, place, or thing.',
+        examples: [
+          'Create a permanent new Node at a chosen location.',
+          'Destroy an enemy Chantry\'s Node, cutting off their Quintessence supply.',
+          'Rewrite the Resonance of a location permanently.',
+          'Permanently alter another mage\'s Arete at the Pattern level.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'spir',
+    name: 'Spirit',
+    icon: '⟡',
+    color: '#8a5a8a',
+    meta: 'Subtle Sphere · The Umbra & Spirit World',
+    blurb: 'The Gauntlet separates the physical world from the Umbra — the spirit world that mirrors and underlies it. The Sphere of Spirit governs all interactions with this hidden realm: perceiving spirits, crossing the Gauntlet, binding and banishing entities, and ultimately reshaping the spirit world itself. Dreamspeakers walk this path with reverence; Verbena with wildness.',
+    traditions: 'Dreamspeakers, Verbena',
+    overview: ['Sense Gauntlet, see spirits','Contact spirits, step sideways','Bind/banish spirits, create fetishes','Rend/seal Gauntlet, build Chantries','Reshape Umbra, create spirit realms'],
+    levels: [
+      {
+        dots: '●', name: 'Initiate', title: 'Sense Gauntlet & Spirits',
+        body: 'The mage gains the ability to perceive the Gauntlet — the barrier between worlds — and the spirits that move beyond or near it. She can gauge the local Gauntlet strength and sense spirit presences.',
+        examples: [
+          'Sense that a powerful spirit is manifesting in this location.',
+          'Gauge the thickness of the Gauntlet at a specific point.',
+          'Detect the presence of a ghost or spirit without seeing it.',
+          'Sense that a location was once a powerful Node or sacred site.',
+        ],
+      },
+      {
+        dots: '●●', name: 'Apprentice', title: 'Contact Spirits / Step Sideways',
+        body: 'The mage can communicate with spirits directly, step through the Gauntlet into the Umbra, and perform basic spirit dealings — offering chiminage and making bargains.',
+        examples: [
+          'Step sideways through the Gauntlet into the Penumbra.',
+          'Speak with the spirit of a location to learn its history.',
+          'Offer chiminage to a spirit in exchange for information.',
+          'Pull another willing person through the Gauntlet with her.',
+        ],
+      },
+      {
+        dots: '●●●', name: 'Disciple', title: 'Bind/Banish Spirits / Create Fetishes',
+        body: 'The mage can compel spirits to serve, banish them from locations, or bind them into physical objects to create fetishes and talens.',
+        examples: [
+          'Bind a fire spirit into a sword, creating a fetish that burns on command.',
+          'Banish a troublesome ghost from a haunted building permanently.',
+          'Compel a spirit to serve as a messenger or scout.',
+          'Create a talen — a one-use spirit-infused object.',
+        ],
+      },
+      {
+        dots: '●●●●', name: 'Adept', title: 'Rend/Seal Gauntlet / Build Chantries',
+        body: 'The mage can tear open or seal the Gauntlet at will, create permanent passages between worlds, and establish Chantries — magical sanctuaries anchored to the spirit world.',
+        examples: [
+          'Tear a permanent passage through the Gauntlet at a Node.',
+          'Seal the Gauntlet in a building, trapping spirits or preventing them from entering.',
+          'Establish a Chantry anchored to a nearby Umbral realm.',
+          'Rend the Gauntlet violently, pulling a spirit involuntarily into the physical world.',
+        ],
+      },
+      {
+        dots: '●●●●●', name: 'Master', title: 'Reshape Umbra / Create Spirit Realms',
+        body: 'The Master of Spirit can reshape the Umbral landscape — creating, destroying, or altering spirit realms — and achieve near-divine status among spirit-kind.',
+        examples: [
+          'Create a new pocket realm in the Umbra and populate it with spirits.',
+          'Permanently alter the landscape of an existing Umbral realm.',
+          'Achieve so much Renown among spirits that they treat the mage as a near-equal to powerful Incarna.',
+          'Destroy a corrupt spirit realm, purifying the Umbra in that region.',
+        ],
+      },
+    ],
+  },
+  {
+    id: 'time',
+    name: 'Time',
+    icon: '◷',
+    color: '#5a8aaa',
+    meta: 'Subtle Sphere · Temporal Perception & Travel',
+    blurb: 'The Sphere of Time encompasses the perception and manipulation of temporal flow. The Cult of Ecstasy experience time as something to be stretched or collapsed in the moment of sensation; the Euthanatos see the thread of fate running through all moments simultaneously. A Master of Time does not travel — she simply is in all moments at once.',
+    traditions: 'Cult of Ecstasy, Euthanatos',
+    overview: ['Sense time flows, see near future','Dilate/compress time perception','Timestop, view past events','Travel into past, age objects','Rewrite timelines, temporal stasis'],
+    levels: [
+      {
+        dots: '●', name: 'Initiate', title: 'Time Sense / See Near Future',
+        body: 'The mage gains an uncanny sense of time — knowing exactly what hour it is without a clock, feeling time pressure, and occasionally glimpsing the immediate future as a prescient flash.',
+        examples: [
+          'Know exactly what time it is without any clock or reference.',
+          'Glimpse a vision of events 5–10 minutes in the future.',
+          'Sense when a critical moment is approaching.',
+          'Detect temporal anomalies — areas where time flows differently.',
+        ],
+      },
+      {
+        dots: '●●', name: 'Apprentice', title: 'Dilate / Compress Perception',
+        body: 'The mage can alter her subjective experience of time and extend her perception into recent past or near future with greater clarity. She cannot change events, only observe them.',
+        examples: [
+          'Enter a state where she acts twice as fast as normal (extra action in combat).',
+          'View a clear vision of events exactly as they happened up to an hour ago.',
+          'Slow her own subjective time to read a book in what seems like hours but is minutes.',
+          'See the near future (10–30 minutes) with reasonable clarity.',
+        ],
+      },
+      {
+        dots: '●●●', name: 'Disciple', title: 'Timestop / View Past Events',
+        body: 'The mage can freeze time in a local area, observe past events at any location as if watching a recording, and begin to affect time on a meaningful scale.',
+        examples: [
+          'Freeze all action in a room for several seconds — long enough to escape or reposition.',
+          'Watch any event that occurred at this location within the last year as a vivid replay.',
+          'Speed herself to superhuman reaction speed for the duration of a fight.',
+          'Age or de-age an object by years in seconds.',
+        ],
+      },
+      {
+        dots: '●●●●', name: 'Adept', title: 'Travel into Past / Age Objects / Timeslips',
+        body: 'The mage can physically travel into the past (though changing it is enormously complex), age or de-age living creatures, and create localised temporal anomalies.',
+        examples: [
+          'Physically travel back in time to observe or participate in past events.',
+          'Age a person to elderly frailty in seconds.',
+          'Create a timeslip in a location where time runs at 10× speed.',
+          'Pull an object from the past into the present.',
+        ],
+      },
+      {
+        dots: '●●●●●', name: 'Master', title: 'Rewrite Timelines / Temporal Stasis',
+        body: 'The Master of Time can rewrite the timeline — changing past events and watching the present reshape itself accordingly — or freeze an object or being in absolute temporal stasis, immune to all change.',
+        examples: [
+          'Rewrite a specific event in the past, altering the present timeline.',
+          'Place a person in perfect temporal stasis — unchanging forever.',
+          'Create a stable time loop in a location, replaying the same events indefinitely.',
+          'Access any moment in time simultaneously, existing in multiple eras at once.',
+        ],
+      },
+    ],
+  },
+];
+
+export const SPHERE_OVERVIEW_ROWS = [
+  { id:'corr', name:'Correspondence', domain:'Space, distance, connections',         traditions:'Virtual Adepts, Euthanatos' },
+  { id:'entr', name:'Entropy',        domain:'Chaos, fate, decay, probability',       traditions:'Euthanatos, Cult of Ecstasy' },
+  { id:'forc', name:'Forces',         domain:'Energy: fire, lightning, kinetics',     traditions:'Sons of Ether, Akashic Brotherhood' },
+  { id:'life', name:'Life',           domain:'Living organisms',                      traditions:'Verbena, Dreamspeakers' },
+  { id:'matt', name:'Matter',         domain:'Inert / unliving matter',               traditions:'Sons of Ether, Order of Hermes' },
+  { id:'mind', name:'Mind',           domain:'Consciousness, psyche, thought',        traditions:'Akashic Brotherhood, Cult of Ecstasy' },
+  { id:'prim', name:'Prime',          domain:'Quintessence, raw magic',               traditions:'Order of Hermes, Celestial Chorus' },
+  { id:'spir', name:'Spirit',         domain:'The Umbra, spirits, Gauntlet',          traditions:'Dreamspeakers, Verbena' },
+  { id:'time', name:'Time',           domain:'Temporal perception and travel',        traditions:'Cult of Ecstasy, Euthanatos' },
+];
