@@ -1,37 +1,7 @@
 import { useState } from 'react';
 import { G } from '../palette.js';
-import { PROVIDERS, getStoredProvider, getStoredKey, storeProvider, storeKey, callAI } from '../utils/aiProvider.js';
-
-function ProviderBar({ provider, apiKey, onProvider, onKey }) {
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-        {PROVIDERS.map(p => {
-          const active = p.id === provider;
-          return (
-            <button key={p.id} onClick={() => onProvider(p.id)} style={{
-              flex: 1, fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.06em',
-              padding: '5px 2px', border: `1px solid ${active ? '#8a5a8a' : G.border}`,
-              borderRadius: 2, background: active ? '#8a5a8a22' : 'transparent',
-              color: active ? '#c090c0' : G.muted, cursor: 'pointer',
-            }}>{p.label}</button>
-          );
-        })}
-      </div>
-      <input
-        type="password"
-        value={apiKey}
-        onChange={e => onKey(e.target.value)}
-        placeholder={PROVIDERS.find(p => p.id === provider)?.hint || 'API key'}
-        style={{
-          width: '100%', background: '#1a1510', border: `1px solid ${G.goldFaint}`,
-          borderRadius: 2, color: G.textDim, fontFamily: 'monospace', fontSize: 11,
-          padding: '6px 8px', outline: 'none', boxSizing: 'border-box',
-        }}
-      />
-    </div>
-  );
-}
+import { getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
+import ProviderBar from '../components/ProviderBar.jsx';
 
 const PARADIGM_EXAMPLES = [
   'Hermetic mage — Latin ritual and sacred geometry',
@@ -128,16 +98,8 @@ export default function CassandraScreen() {
   const [provider, setProvider] = useState(() => getStoredProvider());
   const [apiKey,   setApiKey]   = useState(() => getStoredKey(getStoredProvider()));
 
-  const handleProvider = (p) => {
-    storeProvider(p);
-    setProvider(p);
-    setApiKey(getStoredKey(p));
-  };
-
-  const handleKey = (k) => {
-    setApiKey(k);
-    storeKey(provider, k);
-  };
+  const handleProvider = (p) => setProvider(p);
+  const handleKey      = (k) => setApiKey(k);
 
   const ask = async () => {
     if (!paradigm.trim() || !effect.trim()) {
@@ -177,7 +139,7 @@ export default function CassandraScreen() {
           <span style={{ fontFamily: 'Cinzel Decorative,serif', fontSize: 16, color: '#8a5a8a' }}>⚜ Cassandra</span>
           <p style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.muted, letterSpacing: '.2em', textTransform: 'uppercase', marginTop: 2 }}>Paradigm architect & mystical advisor</p>
         </div>
-        <ProviderBar provider={provider} apiKey={apiKey} onProvider={handleProvider} onKey={handleKey} />
+        <ProviderBar provider={provider} apiKey={apiKey} onProvider={handleProvider} onKey={handleKey} accent="#8a5a8a" />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 90px' }}>

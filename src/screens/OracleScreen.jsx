@@ -1,37 +1,8 @@
 import { useState, useRef } from 'react';
 import { G, SPHERE_COLORS } from '../palette.js';
-import { PROVIDERS, getStoredProvider, getStoredKey, storeProvider, storeKey, callAI } from '../utils/aiProvider.js';
+import { getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
+import ProviderBar from '../components/ProviderBar.jsx';
 
-function ProviderBar({ provider, apiKey, onProvider, onKey }) {
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-        {PROVIDERS.map(p => {
-          const active = p.id === provider;
-          return (
-            <button key={p.id} onClick={() => onProvider(p.id)} style={{
-              flex: 1, fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.06em',
-              padding: '5px 2px', border: `1px solid ${active ? G.gold : G.border}`,
-              borderRadius: 2, background: active ? G.goldFaint : 'transparent',
-              color: active ? G.gold : G.muted, cursor: 'pointer',
-            }}>{p.label}</button>
-          );
-        })}
-      </div>
-      <input
-        type="password"
-        value={apiKey}
-        onChange={e => onKey(e.target.value)}
-        placeholder={PROVIDERS.find(p => p.id === provider)?.hint || 'API key'}
-        style={{
-          width: '100%', background: '#1a1510', border: `1px solid ${G.goldFaint}`,
-          borderRadius: 2, color: G.textDim, fontFamily: 'monospace', fontSize: 11,
-          padding: '6px 8px', outline: 'none', boxSizing: 'border-box',
-        }}
-      />
-    </div>
-  );
-}
 
 const LEVEL_DOTS  = ['','●','●●','●●●','●●●●','●●●●●','●●●●●⁺','●●●●●⁺⁺','●●●●●⁺⁺⁺','●●●●●⁺⁺⁺⁺','●●●●●⁺⁺⁺⁺⁺'];
 const LEVEL_NAMES = ['','Initiate','Apprentice','Disciple','Adept','Master','Ascendant','Exarch','Incarna','Primordial','Absolute'];
@@ -220,16 +191,8 @@ export default function OracleScreen() {
   const [history,  setHistory]  = useState([]);
   const inputRef = useRef(null);
 
-  const handleProvider = (p) => {
-    storeProvider(p);
-    setProvider(p);
-    setApiKey(getStoredKey(p));
-  };
-
-  const handleKey = (k) => {
-    setApiKey(k);
-    storeKey(provider, k);
-  };
+  const handleProvider = (p) => setProvider(p);
+  const handleKey      = (k) => setApiKey(k);
 
   const ask = async () => {
     const q = query.trim();
