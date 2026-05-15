@@ -3,7 +3,7 @@ import { useTheme } from '../context/ThemeContext.jsx';
 import { Toast } from '../components/SharedUI.jsx';
 import { loadAll, saveAll, newId, exportCharsToJson } from '../utils/storage.js';
 
-export default function CharacterList({ onOpen }) {
+export default function CharacterList({ onOpen, onStartCreate }) {
   const G = useTheme();
   const card = { background: G.card, border: `1px solid ${G.border}`, borderRadius: 3, padding: '12px 14px', marginBottom: 12 };
   const btnS = (extra = {}) => ({ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: '.15em', border: `1px solid ${G.gold}`, borderRadius: 3, background: 'transparent', color: G.gold, padding: '9px 18px', cursor: 'pointer', ...extra });
@@ -95,10 +95,26 @@ export default function CharacterList({ onOpen }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, padding: '12px 16px', flexWrap: 'wrap' }}>
-        <button style={btnS({ background: G.goldFaint })} onClick={handleNew}>+ New Character</button>
-        <button style={btnS()} onClick={handleImport} disabled={busy}>{busy ? 'Importing…' : '↑ Import .mage'}</button>
-        <button style={btnS({ fontSize: 10 })} onClick={handleExportAll}>↓ Export DB</button>
+      <div style={{ padding: '12px 16px 0' }}>
+        <button
+          onClick={onStartCreate}
+          style={{
+            width: '100%', fontFamily: 'Cinzel,serif', fontSize: 12, letterSpacing: '.18em',
+            border: `1px solid ${G.gold}`, borderRadius: 3, cursor: 'pointer',
+            background: `linear-gradient(135deg, ${G.goldFaint}, transparent)`,
+            color: G.gold, padding: '14px', marginBottom: 10,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          }}
+        >
+          <span style={{ fontSize: 18 }}>✦</span>
+          GUIDED CHARACTER CREATION
+          <span style={{ fontSize: 18 }}>✦</span>
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 10, padding: '0 16px 12px', flexWrap: 'wrap' }}>
+        <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleNew}>+ Blank Sheet</button>
+        <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleImport} disabled={busy}>{busy ? 'Importing…' : '↑ Import .mage'}</button>
+        <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleExportAll}>↓ Export DB</button>
       </div>
 
       <div style={{ padding: '0 16px 100px', maxWidth: 620, margin: '0 auto' }}>
