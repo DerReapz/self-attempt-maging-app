@@ -172,7 +172,7 @@ export default function CharacterSheet({ charId, onBack }) {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div style={{ ...card, flex: '2 1 400px' }}>
           <Divider>Spheres</Divider>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
             {sheet.spheres.map((s, i) => (
               <SphereBlock key={i} sphere={s} onUpdate={(ns) => updSph(i, ns)} />
             ))}
