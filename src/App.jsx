@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { G } from './palette.js';
+import { useTheme } from './context/ThemeContext.jsx';
 import { applyTextSize } from './screens/SettingsScreen.jsx';
 import CharacterList   from './screens/CharacterList.jsx';
 import CharacterSheet  from './screens/CharacterSheet.jsx';
@@ -22,6 +22,7 @@ const TABS = [
 ];
 
 function BottomNav({ active, onChange }) {
+  const G = useTheme();
   return (
     <div id="mage-nav" style={{
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
@@ -66,6 +67,7 @@ function BottomNav({ active, onChange }) {
 }
 
 export default function App() {
+  const G = useTheme();
   const [activeTab,  setActiveTab]  = useState('chars');
   const [openCharId, setOpenCharId] = useState(null);
 

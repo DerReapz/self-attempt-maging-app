@@ -1,22 +1,26 @@
 import { useState } from 'react';
-import { G } from '../palette.js';
+import { useTheme, useSetTheme, THEMES, buildCustomTheme } from '../context/ThemeContext.jsx';
 import { PROVIDERS, getStoredProvider, getStoredKey } from '../utils/aiProvider.js';
 import ProviderBar from '../components/ProviderBar.jsx';
 import { exportCharsToJson } from '../utils/storage.js';
 
 const TEXT_SIZES = [
-  { id: 'normal', label: 'Normal',   pct: '100%' },
-  { id: 'large',  label: 'Large',    pct: '112%' },
-  { id: 'xl',     label: 'X-Large',  pct: '125%' },
+  { id: 'normal', label: 'Normal', zoom: '1'    },
+  { id: 'large',  label: 'Large',  zoom: '1.12' },
+  { id: 'xl',     label: 'X-Large',zoom: '1.25' },
 ];
 
 export function applyTextSize(id) {
   const found = TEXT_SIZES.find(t => t.id === id) || TEXT_SIZES[0];
-  document.documentElement.style.fontSize = found.pct;
+  document.documentElement.style.zoom = found.zoom;
   localStorage.setItem('mage_text_size', id);
 }
 
+const BG_PRESETS   = ['#080808','#0a0a10','#0d0808','#080d08','#1a1208','#0a0812','#f5eed8','#eee8d0','#dde8ee'];
+const ACC_PRESETS  = ['#c8a84b','#8aa0c8','#a870c8','#70c8a8','#c87870','#c8b090','#6080c8','#c89860','#7ab87a'];
+
 function Section({ title, children }) {
+  const G = useTheme();
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{
@@ -33,6 +37,7 @@ function Section({ title, children }) {
 }
 
 function Hint({ children }) {
+  const G = useTheme();
   return <p style={{ fontSize: 11, color: G.muted, lineHeight: 1.65, marginTop: 6 }}>{children}</p>;
 }
 
@@ -48,7 +53,97 @@ function ActionBtn({ color, onClick, children }) {
   );
 }
 
+function Swatch({ color, selected, onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      width: 28, height: 28, borderRadius: 3, background: color, cursor: 'pointer',
+      border: selected ? '2px solid #fff' : '2px solid transparent',
+      boxShadow: selected ? `0 0 8px ${color}` : 'none',
+      flexShrink: 0,
+    }} />
+  );
+}
+
+function ThemeSection() {
+  const G = useTheme();
+  const setTheme = useSetTheme();
+  const [mode, setMode] = useState(() => localStorage.getItem('mage_theme_mode') || 'dark');
+  const [customBg,  setCustomBg]  = useState(() => localStorage.getItem('mage_custom_bg')  || '#0d0808');
+  const [customAcc, setCustomAcc] = useState(() => localStorage.getItem('mage_custom_acc') || '#c8a84b');
+
+  const applyMode = (m) => {
+    setMode(m);
+    localStorage.setItem('mage_theme_mode', m);
+    if (m === 'dark')   setTheme(THEMES.dark);
+    if (m === 'light')  setTheme(THEMES.light);
+    if (m === 'custom') setTheme(buildCustomTheme(customBg, customAcc));
+  };
+
+  const applyCustom = (bg, acc) => {
+    localStorage.setItem('mage_custom_bg',  bg);
+    localStorage.setItem('mage_custom_acc', acc);
+    if (mode === 'custom') setTheme(buildCustomTheme(bg, acc));
+  };
+
+  const MODES = [
+    { id: 'dark',   label: 'Dark'   },
+    { id: 'light',  label: 'Light'  },
+    { id: 'custom', label: 'Custom' },
+  ];
+
+  return (
+    <Section title="Theme">
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        {MODES.map(m => {
+          const active = mode === m.id;
+          return (
+            <button key={m.id} onClick={() => applyMode(m.id)} style={{
+              flex: 1, fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.1em',
+              padding: '9px 4px', borderRadius: 2, cursor: 'pointer',
+              border: `1px solid ${active ? G.gold : G.border}`,
+              background: active ? G.goldFaint : 'transparent',
+              color: active ? G.gold : G.muted,
+            }}>
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {mode === 'custom' && (
+        <div style={{ padding: '10px 12px', border: `1px solid ${G.goldFaint}`, borderRadius: 2 }}>
+          <div style={{ fontSize: 11, color: G.muted, marginBottom: 8 }}>Background</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+            {BG_PRESETS.map(c => (
+              <Swatch key={c} color={c} selected={customBg === c} onClick={() => { setCustomBg(c); applyCustom(c, customAcc); }} />
+            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="color" value={customBg}
+                onChange={e => { setCustomBg(e.target.value); applyCustom(e.target.value, customAcc); }}
+                style={{ width: 28, height: 28, padding: 0, border: 'none', borderRadius: 3, background: 'transparent', cursor: 'pointer' }} />
+            </div>
+          </div>
+
+          <div style={{ fontSize: 11, color: G.muted, marginBottom: 8 }}>Accent</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {ACC_PRESETS.map(c => (
+              <Swatch key={c} color={c} selected={customAcc === c} onClick={() => { setCustomAcc(c); applyCustom(customBg, c); }} />
+            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="color" value={customAcc}
+                onChange={e => { setCustomAcc(e.target.value); applyCustom(customBg, e.target.value); }}
+                style={{ width: 28, height: 28, padding: 0, border: 'none', borderRadius: 3, background: 'transparent', cursor: 'pointer' }} />
+            </div>
+          </div>
+        </div>
+      )}
+      <Hint>Theme takes effect immediately across the entire app.</Hint>
+    </Section>
+  );
+}
+
 export default function SettingsScreen() {
+  const G = useTheme();
   const [provider, setProvider] = useState(() => getStoredProvider());
   const [apiKey,   setApiKey]   = useState(() => getStoredKey(getStoredProvider()));
   const [textSize, setTextSize] = useState(() => localStorage.getItem('mage_text_size') || 'normal');
@@ -82,17 +177,14 @@ export default function SettingsScreen() {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: G.bg, backgroundImage: 'radial-gradient(ellipse at 50% 0%,#1a1208 0%,transparent 60%)' }}>
 
-      {/* Header */}
       <div style={{ flexShrink: 0, textAlign: 'center', padding: '20px 20px 14px', borderBottom: `1px solid ${G.goldFaint}` }}>
         <div style={{ fontFamily: 'Cinzel Decorative,serif', fontSize: 20, color: G.gold, textShadow: `0 0 30px ${G.gold}44` }}>
           SETTINGS
         </div>
       </div>
 
-      {/* Scrollable content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px 16px 110px', minHeight: 0 }}>
 
-        {/* ── AI Provider & Keys ── */}
         <Section title="AI Provider & Keys">
           <p style={{ fontSize: 12, color: G.textDim, lineHeight: 1.7, marginBottom: 14 }}>
             Select a provider, enter your API key, then tap <strong style={{ color: G.gold, fontFamily: 'Cinzel,serif', fontSize: 10 }}>Save</strong>.
@@ -119,9 +211,9 @@ export default function SettingsScreen() {
           </div>
         </Section>
 
-        {/* ── Appearance ── */}
-        <Section title="Appearance">
-          <div style={{ fontSize: 12, color: G.muted, marginBottom: 10 }}>Text Size</div>
+        <ThemeSection />
+
+        <Section title="Text Size">
           <div style={{ display: 'flex', gap: 8 }}>
             {TEXT_SIZES.map(t => {
               const active = textSize === t.id;
@@ -138,10 +230,9 @@ export default function SettingsScreen() {
               );
             })}
           </div>
-          <Hint>Adjusts the base text size across the entire app. Takes effect immediately.</Hint>
+          <Hint>Scales all content including icons. Takes effect immediately.</Hint>
         </Section>
 
-        {/* ── Character Data ── */}
         <Section title="Character Data">
           <ActionBtn color={G.teal} onClick={handleExport}>↓ Export All Characters</ActionBtn>
           <Hint>Saves mage_characters.json to your device's Documents folder.</Hint>
@@ -151,7 +242,6 @@ export default function SettingsScreen() {
           </div>
         </Section>
 
-        {/* ── About ── */}
         <Section title="About">
           <div style={{ fontSize: 13, color: G.textDim, lineHeight: 1.9 }}>
             <div style={{ fontFamily: 'Cinzel,serif', fontSize: 12, color: G.gold, marginBottom: 2 }}>
@@ -160,18 +250,17 @@ export default function SettingsScreen() {
             <div style={{ fontSize: 11, color: G.muted, marginBottom: 12 }}>
               2nd Edition · Character Manager & Reference
             </div>
-            <div style={{ fontSize: 11, color: '#5a5040', lineHeight: 1.7 }}>
-              Mage: The Ascension is a trademark of Paradox Interactive AB. This is an unofficial fan companion app, not affiliated with or endorsed by Paradox Interactive or White Wolf Publishing. All game content references are used for personal, non-commercial play aid purposes only.
+            <div style={{ fontSize: 11, color: G.muted, lineHeight: 1.7 }}>
+              Mage: The Ascension is a trademark of Paradox Interactive AB. This is an unofficial fan companion app, not affiliated with or endorsed by Paradox Interactive or White Wolf Publishing.
             </div>
           </div>
         </Section>
       </div>
 
-      {/* Toast */}
       {toast ? (
         <div style={{
           position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
-          background: '#1a1a1a', border: `1px solid ${G.gold}`, borderRadius: 3,
+          background: G.card, border: `1px solid ${G.gold}`, borderRadius: 3,
           padding: '8px 18px', color: G.gold, fontFamily: 'Cinzel,serif', fontSize: 11,
           zIndex: 200, whiteSpace: 'nowrap',
         }}>

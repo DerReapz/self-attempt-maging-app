@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { G, SPHERE_COLORS } from '../palette.js';
+import { SPHERE_COLORS } from '../palette.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { PROVIDERS, getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
 
 
@@ -91,6 +92,7 @@ function repairJSON(str) {
 }
 
 function SphereBadge({ name, level }) {
+  const G = useTheme();
   const c = SPHERE_COLORS[name] || G.gold;
   const isAscended = level >= 6;
   const dots = LEVEL_DOTS[level] || '●'.repeat(Math.min(level, 5)) + '⁺'.repeat(Math.max(0, level - 5));
@@ -105,6 +107,7 @@ function SphereBadge({ name, level }) {
 }
 
 function ResultBlock({ data }) {
+  const G = useTheme();
   if (!data) return null;
   const { spheres, ruling, paradox, combination_note, higher_level, attack, area_effects } = data;
 
@@ -181,6 +184,7 @@ function ResultBlock({ data }) {
 }
 
 function ProviderBadge() {
+  const G = useTheme();
   const id    = getStoredProvider();
   const label = PROVIDERS.find(p => p.id === id)?.label || id;
   const hasKey = !!getStoredKey(id);
@@ -194,6 +198,7 @@ function ProviderBadge() {
 }
 
 export default function OracleScreen() {
+  const G = useTheme();
   const [query,   setQuery]   = useState('');
   const [loading, setLoading] = useState(false);
   const [result,  setResult]  = useState(null);

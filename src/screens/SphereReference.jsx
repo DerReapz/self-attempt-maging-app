@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { G, SPHERE_COLORS } from '../palette.js';
+import { SPHERE_COLORS } from '../palette.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { SPHERE_DATA, SPHERE_OVERVIEW_ROWS } from '../data/spheres.js';
 
 const LEVEL_NAMES = ['', 'Initiate', 'Apprentice', 'Disciple', 'Adept', 'Master'];
 
 function PowerBar({ filled, color }) {
+  const G = useTheme();
   return (
     <div style={{ display: 'flex', gap: 3, marginTop: 6 }}>
       {Array.from({ length: 5 }).map((_, i) => (
@@ -15,6 +17,7 @@ function PowerBar({ filled, color }) {
 }
 
 function LevelEntry({ level, dot, color }) {
+  const G = useTheme();
   const [open, setOpen] = useState(false);
   return (
     <div style={{ borderBottom: `1px solid rgba(58,46,30,0.4)`, paddingBottom: 10, marginBottom: 10 }}>
@@ -52,6 +55,7 @@ function LevelEntry({ level, dot, color }) {
 }
 
 function SphereCard({ sphere }) {
+  const G = useTheme();
   const [expanded, setExpanded] = useState(false);
   const c = sphere.color;
   return (
@@ -85,6 +89,7 @@ function SphereCard({ sphere }) {
 }
 
 function OverviewTable() {
+  const G = useTheme();
   const levelHeaders = ['● Apprentice', '●● Initiate', '●●● Disciple', '●●●● Adept', '●●●●● Master'];
   return (
     <div style={{ overflowX: 'auto', marginBottom: 24 }}>
@@ -119,6 +124,7 @@ function OverviewTable() {
 }
 
 export default function SphereReference() {
+  const G = useTheme();
   const [view, setView] = useState('cards'); // 'cards' | 'overview'
   const [filter, setFilter] = useState('');
 

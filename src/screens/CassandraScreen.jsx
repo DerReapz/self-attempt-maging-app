@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { G } from '../palette.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { PROVIDERS, getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
 
 const PARADIGM_EXAMPLES = [
@@ -55,6 +55,7 @@ function repairJSON(str) {
 }
 
 function CassProviderBadge() {
+  const G = useTheme();
   const id    = getStoredProvider();
   const label = PROVIDERS.find(p => p.id === id)?.label || id;
   const hasKey = !!getStoredKey(id);
@@ -68,6 +69,7 @@ function CassProviderBadge() {
 }
 
 function CassandraResult({ data }) {
+  const G = useTheme();
   if (!data) return null;
   const blocks = [
     { key: 'alignment',           label: 'Paradigm Alignment',          color: G.spir || '#8a5a8a' },
@@ -101,6 +103,7 @@ function CassandraResult({ data }) {
 }
 
 export default function CassandraScreen() {
+  const G = useTheme();
   const [paradigm, setParadigm] = useState('');
   const [effect,   setEffect]   = useState('');
   const [loading,  setLoading]  = useState(false);

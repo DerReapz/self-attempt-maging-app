@@ -1,17 +1,12 @@
 import { useState, useRef } from 'react';
-import { G } from '../palette.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { Toast } from '../components/SharedUI.jsx';
 import { loadAll, saveAll, newId, exportCharsToJson } from '../utils/storage.js';
 
-const card = { background: G.card, border: `1px solid ${G.border}`, borderRadius: 3, padding: '12px 14px', marginBottom: 12 };
-
-const btnS = (extra = {}) => ({
-  fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: '.15em',
-  border: `1px solid ${G.gold}`, borderRadius: 3, background: 'transparent',
-  color: G.gold, padding: '9px 18px', cursor: 'pointer', ...extra,
-});
-
 export default function CharacterList({ onOpen }) {
+  const G = useTheme();
+  const card = { background: G.card, border: `1px solid ${G.border}`, borderRadius: 3, padding: '12px 14px', marginBottom: 12 };
+  const btnS = (extra = {}) => ({ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: '.15em', border: `1px solid ${G.gold}`, borderRadius: 3, background: 'transparent', color: G.gold, padding: '9px 18px', cursor: 'pointer', ...extra });
   const [chars, setChars] = useState(loadAll);
   const [toast, setToast] = useState('');
   const [busy,  setBusy]  = useState(false);
