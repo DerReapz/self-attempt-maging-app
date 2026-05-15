@@ -107,7 +107,7 @@ export default function CharacterSheet({ charId, onBack }) {
         <button onClick={handleExportPDF} style={btnS({ color: G.gold, borderColor: `${G.gold}66`, flexShrink: 0 })}>↓ PDF</button>
       </div>
       <div style={{ display: 'flex', borderTop: `1px solid ${G.goldFaint}` }}>
-        {['SHEET I', 'SHEET II'].map((t, i) => (
+        {['SHEET I', 'SHEET II', 'SHEET III'].map((t, i) => (
           <button key={i} onClick={() => setTab(i)}
             style={{ fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em', border: 'none', borderBottom: tab === i ? `2px solid ${G.gold}` : '2px solid transparent', background: 'transparent', color: tab === i ? G.gold : G.goldDim, padding: '10px 16px', cursor: 'pointer' }}>
             {t}
@@ -298,11 +298,101 @@ export default function CharacterSheet({ charId, onBack }) {
     </div>
   );
 
+  // ── Sheet III ──
+  const Page3 = (
+    <>
+      {/* ── Possessions ── */}
+      <div style={card}>
+        <Divider>Possessions</Divider>
+
+        {/* Gear & Equipment */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>GEAR (CARRIED)</div>
+            <Lines values={sheet.gearCarried} onChange={(v) => upd('gearCarried', v)} />
+          </div>
+          <div>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>EQUIPMENT (OWNED)</div>
+            <Lines values={sheet.equipmentOwned} onChange={(v) => upd('equipmentOwned', v)} />
+          </div>
+        </div>
+
+        {/* Weapons & Vehicles */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>WEAPONS</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px', gap: '0 8px', marginBottom: 4 }}>
+              <span style={{ fontFamily: 'Cinzel,serif', fontSize: 8, color: G.muted }}>NAME</span>
+              <span style={{ fontFamily: 'Cinzel,serif', fontSize: 8, color: G.muted }}>DMG</span>
+            </div>
+            {sheet.weapons.map((w, i) => (
+              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 48px', gap: '0 8px', marginBottom: 4 }}>
+                <input value={w.name} onChange={(e) => updWep(i, 'name', e.target.value)}
+                  style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.text, fontSize: 13, outline: 'none', padding: '1px 2px', minWidth: 0 }} />
+                <input value={w.dmg} onChange={(e) => updWep(i, 'dmg', e.target.value)}
+                  style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.text, fontSize: 13, outline: 'none', padding: '1px 2px', textAlign: 'center', minWidth: 0 }} />
+              </div>
+            ))}
+          </div>
+          <div>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>VEHICLES</div>
+            <Lines values={sheet.vehicles} onChange={(v) => upd('vehicles', v)} />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Haven ── */}
+      <div style={card}>
+        <Divider>Haven</Divider>
+
+        {/* Haven header row */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 20px', marginBottom: 12 }}>
+          <label style={{ display: 'flex', gap: 5, alignItems: 'center', cursor: 'pointer', fontSize: 13, color: G.textDim, flexShrink: 0 }}>
+            <input type="checkbox" checked={sheet.noHaven} onChange={(e) => upd('noHaven', e.target.checked)} style={{ accentColor: G.gold }} />
+            No Haven?
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+            <span style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.goldDim }}>RATING</span>
+            <Dots max={5} value={sheet.havenRating} onChange={(v) => upd('havenRating', v)} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, flex: '1 1 160px', minWidth: 0 }}>
+            <span style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.goldDim, flexShrink: 0 }}>NAME</span>
+            <input value={sheet.havenName} onChange={(e) => upd('havenName', e.target.value)}
+              style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.text, fontSize: 13, outline: 'none', padding: '1px 2px' }} />
+          </div>
+        </div>
+
+        {/* Haven Merits & Flaws */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 12 }}>
+          <div>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>HAVEN MERITS</div>
+            {sheet.havenMerits.map((r, i) => (
+              <FreeRow key={i} name={r.name} value={r.value} placeholder="Merit…"
+                onName={(v) => updFree('havenMerits', i, 'name', v)}
+                onChange={(v) => updFree('havenMerits', i, 'value', v)} />
+            ))}
+          </div>
+          <div>
+            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>HAVEN FLAWS</div>
+            {sheet.havenFlaws.map((r, i) => (
+              <FreeRow key={i} name={r.name} value={r.value} placeholder="Flaw…"
+                onName={(v) => updFree('havenFlaws', i, 'name', v)}
+                onChange={(v) => updFree('havenFlaws', i, 'value', v)} />
+            ))}
+          </div>
+        </div>
+
+        <TArea label="Location"    value={sheet.havenLocation}    onChange={(v) => upd('havenLocation', v)}    rows={3} />
+        <TArea label="Description" value={sheet.havenDescription} onChange={(v) => upd('havenDescription', v)} rows={4} />
+      </div>
+    </>
+  );
+
   return (
     <div style={{ minHeight: '100%', background: G.bg, backgroundImage: 'radial-gradient(ellipse at 15% 10%,#1a1208 0%,transparent 55%)', overflowY: 'auto' }}>
       {TopBar}
       <div style={{ padding: '16px 16px 100px', maxWidth: 980, margin: '0 auto' }}>
-        {tab === 0 ? Page1 : Page2}
+        {tab === 0 ? Page1 : tab === 1 ? Page2 : Page3}
       </div>
       <Toast msg={toast} />
     </div>
