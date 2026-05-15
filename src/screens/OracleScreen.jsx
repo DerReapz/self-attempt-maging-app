@@ -1,5 +1,37 @@
 import { useState, useRef } from 'react';
 import { G, SPHERE_COLORS } from '../palette.js';
+import { PROVIDERS, getStoredProvider, getStoredKey, storeProvider, storeKey, callAI } from '../utils/aiProvider.js';
+
+function ProviderBar({ provider, apiKey, onProvider, onKey }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+        {PROVIDERS.map(p => {
+          const active = p.id === provider;
+          return (
+            <button key={p.id} onClick={() => onProvider(p.id)} style={{
+              flex: 1, fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.06em',
+              padding: '5px 2px', border: `1px solid ${active ? G.gold : G.border}`,
+              borderRadius: 2, background: active ? G.goldFaint : 'transparent',
+              color: active ? G.gold : G.muted, cursor: 'pointer',
+            }}>{p.label}</button>
+          );
+        })}
+      </div>
+      <input
+        type="password"
+        value={apiKey}
+        onChange={e => onKey(e.target.value)}
+        placeholder={PROVIDERS.find(p => p.id === provider)?.hint || 'API key'}
+        style={{
+          width: '100%', background: '#1a1510', border: `1px solid ${G.goldFaint}`,
+          borderRadius: 2, color: G.textDim, fontFamily: 'monospace', fontSize: 11,
+          padding: '6px 8px', outline: 'none', boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  );
+}
 
 const LEVEL_DOTS  = ['','●','●●','●●●','●●●●','●●●●●','●●●●●⁺','●●●●●⁺⁺','●●●●●⁺⁺⁺','●●●●●⁺⁺⁺⁺','●●●●●⁺⁺⁺⁺⁺'];
 const LEVEL_NAMES = ['','Initiate','Apprentice','Disciple','Adept','Master','Ascendant','Exarch','Incarna','Primordial','Absolute'];
@@ -179,42 +211,38 @@ function ResultBlock({ data }) {
 }
 
 export default function OracleScreen() {
-  const [query,   setQuery]   = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result,  setResult]  = useState(null);
-  const [error,   setError]   = useState('');
-  const [apiKey,  setApiKey]  = useState(() => localStorage.getItem('mage_api_key') || '');
-  const [history, setHistory] = useState([]);
+  const [query,    setQuery]    = useState('');
+  const [loading,  setLoading]  = useState(false);
+  const [result,   setResult]   = useState(null);
+  const [error,    setError]    = useState('');
+  const [provider, setProvider] = useState(() => getStoredProvider());
+  const [apiKey,   setApiKey]   = useState(() => getStoredKey(getStoredProvider()));
+  const [history,  setHistory]  = useState([]);
   const inputRef = useRef(null);
 
-  const saveKey = (k) => {
+  const handleProvider = (p) => {
+    storeProvider(p);
+    setProvider(p);
+    setApiKey(getStoredKey(p));
+  };
+
+  const handleKey = (k) => {
     setApiKey(k);
-    localStorage.setItem('mage_api_key', k);
+    storeKey(provider, k);
   };
 
   const ask = async () => {
     const q = query.trim();
     if (!q) return;
-    if (!apiKey) { setError('Enter your Anthropic API key above first.'); return; }
+    if (!apiKey) { setError('Enter your API key above first.'); return; }
 
     setLoading(true);
     setError('');
     setResult(null);
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          system: ORACLE_SYSTEM,
-          messages: [{ role: 'user', content: q }],
-        }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-      let raw = data.content.map((b) => b.text || '').join('').trim().replace(/```json|```/g, '').trim();
+      let raw = await callAI({ provider, apiKey, system: ORACLE_SYSTEM, userMessage: q, maxTokens: 4096 });
+      raw = raw.replace(/```json|```/g, '').trim();
       let parsed;
       try { parsed = JSON.parse(raw); }
       catch { parsed = JSON.parse(repairJSON(raw)); }
@@ -234,13 +262,7 @@ export default function OracleScreen() {
           <span style={{ fontFamily: 'Cinzel Decorative,serif', fontSize: 16, color: G.gold }}>⚗ The Sphere Oracle</span>
           <p style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.muted, letterSpacing: '.2em', textTransform: 'uppercase', marginTop: 2 }}>Ask what spheres your effect requires</p>
         </div>
-        <input
-          placeholder="Anthropic API Key (stored locally)"
-          value={apiKey}
-          onChange={(e) => saveKey(e.target.value)}
-          type="password"
-          style={{ width: '100%', background: '#1a1510', border: `1px solid ${G.goldFaint}`, borderRadius: 2, color: G.textDim, fontFamily: 'monospace', fontSize: 11, padding: '6px 8px', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
-        />
+        <ProviderBar provider={provider} apiKey={apiKey} onProvider={handleProvider} onKey={handleKey} />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 90px' }}>
