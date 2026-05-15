@@ -67,10 +67,13 @@ export default function CharacterSheet({ charId, onBack }) {
     if (!ch) return;
     try {
       toast2('Generating PDF…');
-      await exportToPDF(ch);
-      toast2('PDF exported ✓');
+      const res = await exportToPDF(ch);
+      if (res?.method === 'native-pdf')        toast2('Saved to Documents ✓');
+      else if (res?.method === 'print-dialog') toast2('Use “Save as PDF” in print dialog');
+      else                                     toast2('PDF exported ✓');
     } catch (e) {
-      toast2('PDF export failed');
+      console.error('PDF export failed:', e);
+      toast2('PDF export failed: ' + (e?.message || 'unknown error'));
     }
   }, [charId, flushToStorage]);
 
