@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { G } from '../palette.js';
-import { getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
-import ProviderBar from '../components/ProviderBar.jsx';
+import { PROVIDERS, getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
 
 const PARADIGM_EXAMPLES = [
   'Hermetic mage — Latin ritual and sacred geometry',
@@ -55,6 +54,19 @@ function repairJSON(str) {
   return str;
 }
 
+function CassProviderBadge() {
+  const id    = getStoredProvider();
+  const label = PROVIDERS.find(p => p.id === id)?.label || id;
+  const hasKey = !!getStoredKey(id);
+  return (
+    <div style={{ textAlign: 'center', fontSize: 10, color: G.muted }}>
+      <span style={{ color: hasKey ? '#6a9a6a' : '#c08080' }}>{hasKey ? '●' : '○'}</span>
+      {' '}{label}{' · '}
+      <span style={{ fontFamily: 'Cinzel,serif', color: '#8a5a8a' }}>⚙ Settings</span>
+    </div>
+  );
+}
+
 function CassandraResult({ data }) {
   if (!data) return null;
   const blocks = [
@@ -95,18 +107,15 @@ export default function CassandraScreen() {
   const [result,   setResult]   = useState(null);
   const [error,    setError]    = useState('');
   const [history,  setHistory]  = useState([]);
-  const [provider, setProvider] = useState(() => getStoredProvider());
-  const [apiKey,   setApiKey]   = useState(() => getStoredKey(getStoredProvider()));
-
-  const handleProvider = (p) => setProvider(p);
-  const handleKey      = (k) => setApiKey(k);
 
   const ask = async () => {
     if (!paradigm.trim() || !effect.trim()) {
       setError('Please fill in both fields.');
       return;
     }
-    if (!apiKey) { setError('Enter your API key first.'); return; }
+    const provider = getStoredProvider();
+    const apiKey   = getStoredKey(provider);
+    if (!apiKey) { setError('No API key set — configure one in ⚙ Settings.'); return; }
 
     setLoading(true);
     setError('');
@@ -139,7 +148,7 @@ export default function CassandraScreen() {
           <span style={{ fontFamily: 'Cinzel Decorative,serif', fontSize: 16, color: '#8a5a8a' }}>⚜ Cassandra</span>
           <p style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.muted, letterSpacing: '.2em', textTransform: 'uppercase', marginTop: 2 }}>Paradigm architect & mystical advisor</p>
         </div>
-        <ProviderBar provider={provider} apiKey={apiKey} onProvider={handleProvider} onKey={handleKey} accent="#8a5a8a" />
+        <CassProviderBadge />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 90px' }}>

@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react';
 import { G, SPHERE_COLORS } from '../palette.js';
-import { getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
-import ProviderBar from '../components/ProviderBar.jsx';
+import { PROVIDERS, getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
 
 
 const LEVEL_DOTS  = ['','●','●●','●●●','●●●●','●●●●●','●●●●●⁺','●●●●●⁺⁺','●●●●●⁺⁺⁺','●●●●●⁺⁺⁺⁺','●●●●●⁺⁺⁺⁺⁺'];
@@ -181,23 +180,34 @@ function ResultBlock({ data }) {
   );
 }
 
-export default function OracleScreen() {
-  const [query,    setQuery]    = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [result,   setResult]   = useState(null);
-  const [error,    setError]    = useState('');
-  const [provider, setProvider] = useState(() => getStoredProvider());
-  const [apiKey,   setApiKey]   = useState(() => getStoredKey(getStoredProvider()));
-  const [history,  setHistory]  = useState([]);
-  const inputRef = useRef(null);
+function ProviderBadge() {
+  const id    = getStoredProvider();
+  const label = PROVIDERS.find(p => p.id === id)?.label || id;
+  const hasKey = !!getStoredKey(id);
+  return (
+    <div style={{ textAlign: 'center', fontSize: 10, color: G.muted }}>
+      <span style={{ color: hasKey ? G.teal : '#c08080' }}>{hasKey ? '●' : '○'}</span>
+      {' '}{label}{' · '}
+      <span style={{ fontFamily: 'Cinzel,serif', color: G.goldDim }}>⚙ Settings</span>
+    </div>
+  );
+}
 
-  const handleProvider = (p) => setProvider(p);
-  const handleKey      = (k) => setApiKey(k);
+export default function OracleScreen() {
+  const [query,   setQuery]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result,  setResult]  = useState(null);
+  const [error,   setError]   = useState('');
+  const [history, setHistory] = useState([]);
+  const inputRef = useRef(null);
 
   const ask = async () => {
     const q = query.trim();
     if (!q) return;
-    if (!apiKey) { setError('Enter your API key above first.'); return; }
+    // Always read fresh from storage so Settings changes are picked up immediately
+    const provider = getStoredProvider();
+    const apiKey   = getStoredKey(provider);
+    if (!apiKey) { setError('No API key set — configure one in ⚙ Settings.'); return; }
 
     setLoading(true);
     setError('');
@@ -220,12 +230,12 @@ export default function OracleScreen() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: G.bg }}>
-      <div style={{ background: '#0a0806', borderBottom: '1px solid #3a2e1e', padding: '12px 16px', flexShrink: 0 }}>
-        <div style={{ textAlign: 'center', marginBottom: 10 }}>
+      <div style={{ background: '#0a0806', borderBottom: '1px solid #3a2e1e', padding: '10px 16px', flexShrink: 0 }}>
+        <div style={{ textAlign: 'center', marginBottom: 6 }}>
           <span style={{ fontFamily: 'Cinzel Decorative,serif', fontSize: 16, color: G.gold }}>⚗ The Sphere Oracle</span>
           <p style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.muted, letterSpacing: '.2em', textTransform: 'uppercase', marginTop: 2 }}>Ask what spheres your effect requires</p>
         </div>
-        <ProviderBar provider={provider} apiKey={apiKey} onProvider={handleProvider} onKey={handleKey} />
+        <ProviderBadge />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 90px' }}>
