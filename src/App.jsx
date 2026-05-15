@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { G } from './palette.js';
+import { useTheme } from './context/ThemeContext.jsx';
 import { applyTextSize } from './screens/SettingsScreen.jsx';
-import CharacterList   from './screens/CharacterList.jsx';
-import CharacterSheet  from './screens/CharacterSheet.jsx';
-import SphereReference from './screens/SphereReference.jsx';
-import SpellsRituals   from './screens/SpellsRituals.jsx';
-import OracleScreen    from './screens/OracleScreen.jsx';
-import CassandraScreen from './screens/CassandraScreen.jsx';
-import SettingsScreen  from './screens/SettingsScreen.jsx';
+import CharacterList    from './screens/CharacterList.jsx';
+import CharacterSheet   from './screens/CharacterSheet.jsx';
+import CharacterCreator from './screens/CharacterCreator.jsx';
+import SphereReference  from './screens/SphereReference.jsx';
+import SpellsRituals    from './screens/SpellsRituals.jsx';
+import OracleScreen     from './screens/OracleScreen.jsx';
+import CassandraScreen  from './screens/CassandraScreen.jsx';
+import SettingsScreen   from './screens/SettingsScreen.jsx';
 
 // Apply stored text size immediately on load
 applyTextSize(localStorage.getItem('mage_text_size') || 'normal');
@@ -22,6 +23,7 @@ const TABS = [
 ];
 
 function BottomNav({ active, onChange }) {
+  const G = useTheme();
   return (
     <div id="mage-nav" style={{
       position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
@@ -66,12 +68,25 @@ function BottomNav({ active, onChange }) {
 }
 
 export default function App() {
-  const [activeTab,  setActiveTab]  = useState('chars');
-  const [openCharId, setOpenCharId] = useState(null);
+  const G = useTheme();
+  const [activeTab,    setActiveTab]    = useState('chars');
+  const [openCharId,   setOpenCharId]   = useState(null);
+  const [showCreator,  setShowCreator]  = useState(false);
 
-  const handleOpenChar   = (id) => setOpenCharId(id);
-  const handleCloseSheet = ()   => setOpenCharId(null);
-  const handleTabChange  = (tab) => setActiveTab(tab);
+  const handleOpenChar    = (id) => setOpenCharId(id);
+  const handleCloseSheet  = ()   => setOpenCharId(null);
+  const handleTabChange   = (tab) => setActiveTab(tab);
+  const handleStartCreate = ()   => setShowCreator(true);
+  const handleCreatorDone = (id) => { setShowCreator(false); setOpenCharId(id); };
+  const handleCreatorCancel = () => setShowCreator(false);
+
+  if (showCreator) {
+    return (
+      <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: G.bg }}>
+        <CharacterCreator onDone={handleCreatorDone} onCancel={handleCreatorCancel} />
+      </div>
+    );
+  }
 
   if (openCharId) {
     return (
@@ -85,7 +100,7 @@ export default function App() {
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: G.bg, overflow: 'hidden' }}>
       <div style={{ flex: 1, overflow: 'hidden', position: 'relative', minHeight: 0 }}>
         <div style={{ position: 'absolute', inset: 0, display: activeTab === 'chars'     ? 'flex' : 'none', flexDirection: 'column', overflowY: 'auto' }}>
-          <CharacterList onOpen={handleOpenChar} />
+          <CharacterList onOpen={handleOpenChar} onStartCreate={handleStartCreate} />
         </div>
         <div style={{ position: 'absolute', inset: 0, display: activeTab === 'spells'    ? 'flex' : 'none', flexDirection: 'column' }}>
           <SpellsRituals />

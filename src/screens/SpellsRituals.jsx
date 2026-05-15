@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { G, SPHERE_COLORS } from '../palette.js';
+import { SPHERE_COLORS } from '../palette.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 
 // ── Type colour helper ─────────────────────────────────────────────────────
 const TYPE_CLR = { Coincidental: '#5cad8f', Vulgar: '#c03030', Ritual: '#c8a84b' };
@@ -7,6 +8,7 @@ function primaryType(t) {
   return t.startsWith('Coincidental') ? 'Coincidental' : t.startsWith('Vulgar') ? 'Vulgar' : 'Ritual';
 }
 function TypePill({ type }) {
+  const G = useTheme();
   const c = TYPE_CLR[primaryType(type)] || G.gold;
   return (
     <span style={{
@@ -258,6 +260,7 @@ const RITUALS = [
 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function SpellsRituals() {
+  const G = useTheme();
   const [subTab,       setSubTab]       = useState('rotes');
   const [openSpheres,  setOpenSpheres]  = useState(new Set());
   const [openRotes,    setOpenRotes]    = useState(new Set());

@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { G } from '../palette.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { PROVIDERS, getStoredKey, storeProvider, storeKey } from '../utils/aiProvider.js';
 
-export default function ProviderBar({ provider, apiKey, onProvider, onKey, accent = G.gold }) {
+export default function ProviderBar({ provider, apiKey, onProvider, onKey, accent }) {
+  const G = useTheme();
+  const ac = accent || G.gold;
   const [draft,  setDraft]  = useState(apiKey);
   const [saved,  setSaved]  = useState(false);
 
@@ -35,9 +37,9 @@ export default function ProviderBar({ provider, apiKey, onProvider, onKey, accen
             <button key={p.id} onClick={() => handleProvider(p.id)} style={{
               flex: 1, fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.06em',
               padding: '5px 2px', borderRadius: 2, cursor: 'pointer',
-              border: `1px solid ${active ? accent : G.border}`,
-              background: active ? `${accent}22` : 'transparent',
-              color: active ? accent : G.muted,
+              border: `1px solid ${active ? ac : G.border}`,
+              background: active ? `${ac}22` : 'transparent',
+              color: active ? ac : G.muted,
             }}>{p.label}</button>
           );
         })}
@@ -53,7 +55,7 @@ export default function ProviderBar({ provider, apiKey, onProvider, onKey, accen
           placeholder={PROVIDERS.find(p => p.id === provider)?.hint || 'API key'}
           style={{
             flex: 1, background: '#1a1510',
-            border: `1px solid ${dirty ? accent + '88' : G.goldFaint}`,
+            border: `1px solid ${dirty ? ac + '88' : G.goldFaint}`,
             borderRadius: 2, color: G.textDim, fontFamily: 'monospace', fontSize: 11,
             padding: '6px 8px', outline: 'none', minWidth: 0,
             transition: 'border-color .15s',
@@ -64,9 +66,9 @@ export default function ProviderBar({ provider, apiKey, onProvider, onKey, accen
           style={{
             fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.1em',
             padding: '6px 12px', borderRadius: 2, cursor: 'pointer', flexShrink: 0,
-            border: `1px solid ${saved ? G.teal : accent}`,
-            background: saved ? `${G.teal}22` : `${accent}18`,
-            color: saved ? G.teal : accent,
+            border: `1px solid ${saved ? G.teal : ac}`,
+            background: saved ? `${G.teal}22` : `${ac}18`,
+            color: saved ? G.teal : ac,
             transition: 'all .15s',
           }}
         >

@@ -1,19 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { G } from '../palette.js';
+import { useTheme } from '../context/ThemeContext.jsx';
 import { Track, DamageTrack, Dots, Divider, Field, SkillRow, FreeRow, Lines, TArea, SphereBlock, Toast } from '../components/SharedUI.jsx';
 import { loadAll, saveAll } from '../utils/storage.js';
 import { mergeSheet } from '../data/defaultSheet.js';
 import { exportToPDF } from '../utils/pdfExport.js';
 
-const card    = { background: G.card, border: `1px solid ${G.border}`, borderRadius: 3, padding: '12px 14px', marginBottom: 12 };
-const statLbl = { fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.22em', color: G.goldDim, display: 'block', marginBottom: 5 };
-const btnS    = (extra = {}) => ({
-  fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
-  border: `1px solid ${G.gold}44`, borderRadius: 3, background: 'transparent',
-  color: G.goldDim, padding: '6px 12px', cursor: 'pointer', ...extra,
-});
-
 export default function CharacterSheet({ charId, onBack }) {
+  const G       = useTheme();
+  const card    = { background: G.card, border: `1px solid ${G.border}`, borderRadius: 3, padding: '12px 14px', marginBottom: 12 };
+  const statLbl = { fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.22em', color: G.goldDim, display: 'block', marginBottom: 5 };
+  const btnS    = (extra = {}) => ({ fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em', border: `1px solid ${G.gold}44`, borderRadius: 3, background: 'transparent', color: G.goldDim, padding: '6px 12px', cursor: 'pointer', ...extra });
   const [sheet,       setSheet]       = useState(null);
   const [tab,         setTab]         = useState(0);
   const [saveSt,      setSaveSt]      = useState('');
@@ -96,7 +92,7 @@ export default function CharacterSheet({ charId, onBack }) {
   const { identity: id, physical: phys, social: soc, mental: ment } = sheet;
 
   const TopBar = (
-    <div style={{ position: 'sticky', top: 0, zIndex: 50, background: '#080808ee', backdropFilter: 'blur(8px)', borderBottom: `1px solid ${G.goldFaint}` }}>
+    <div style={{ position: 'sticky', top: 0, zIndex: 50, background: G.bg + 'ee', backdropFilter: 'blur(8px)', borderBottom: `1px solid ${G.goldFaint}` }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '0 10px', gap: 8, minHeight: 44 }}>
         <button onClick={handleBack} style={btnS({ borderColor: G.goldFaint, flexShrink: 0 })}>← Back</button>
         <div style={{ flex: 1, fontFamily: 'Cinzel,serif', fontSize: 13, color: G.gold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'center' }}>
