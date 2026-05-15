@@ -1,37 +1,7 @@
 import { useState, useRef } from 'react';
 import { G, SPHERE_COLORS } from '../palette.js';
-import { PROVIDERS, getStoredProvider, getStoredKey, storeProvider, storeKey, callAI } from '../utils/aiProvider.js';
+import { PROVIDERS, getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
 
-function ProviderBar({ provider, apiKey, onProvider, onKey }) {
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
-        {PROVIDERS.map(p => {
-          const active = p.id === provider;
-          return (
-            <button key={p.id} onClick={() => onProvider(p.id)} style={{
-              flex: 1, fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.06em',
-              padding: '5px 2px', border: `1px solid ${active ? G.gold : G.border}`,
-              borderRadius: 2, background: active ? G.goldFaint : 'transparent',
-              color: active ? G.gold : G.muted, cursor: 'pointer',
-            }}>{p.label}</button>
-          );
-        })}
-      </div>
-      <input
-        type="password"
-        value={apiKey}
-        onChange={e => onKey(e.target.value)}
-        placeholder={PROVIDERS.find(p => p.id === provider)?.hint || 'API key'}
-        style={{
-          width: '100%', background: '#1a1510', border: `1px solid ${G.goldFaint}`,
-          borderRadius: 2, color: G.textDim, fontFamily: 'monospace', fontSize: 11,
-          padding: '6px 8px', outline: 'none', boxSizing: 'border-box',
-        }}
-      />
-    </div>
-  );
-}
 
 const LEVEL_DOTS  = ['','●','●●','●●●','●●●●','●●●●●','●●●●●⁺','●●●●●⁺⁺','●●●●●⁺⁺⁺','●●●●●⁺⁺⁺⁺','●●●●●⁺⁺⁺⁺⁺'];
 const LEVEL_NAMES = ['','Initiate','Apprentice','Disciple','Adept','Master','Ascendant','Exarch','Incarna','Primordial','Absolute'];
@@ -210,31 +180,34 @@ function ResultBlock({ data }) {
   );
 }
 
+function ProviderBadge() {
+  const id    = getStoredProvider();
+  const label = PROVIDERS.find(p => p.id === id)?.label || id;
+  const hasKey = !!getStoredKey(id);
+  return (
+    <div style={{ textAlign: 'center', fontSize: 10, color: G.muted }}>
+      <span style={{ color: hasKey ? G.teal : '#c08080' }}>{hasKey ? '●' : '○'}</span>
+      {' '}{label}{' · '}
+      <span style={{ fontFamily: 'Cinzel,serif', color: G.goldDim }}>⚙ Settings</span>
+    </div>
+  );
+}
+
 export default function OracleScreen() {
-  const [query,    setQuery]    = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [result,   setResult]   = useState(null);
-  const [error,    setError]    = useState('');
-  const [provider, setProvider] = useState(() => getStoredProvider());
-  const [apiKey,   setApiKey]   = useState(() => getStoredKey(getStoredProvider()));
-  const [history,  setHistory]  = useState([]);
+  const [query,   setQuery]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result,  setResult]  = useState(null);
+  const [error,   setError]   = useState('');
+  const [history, setHistory] = useState([]);
   const inputRef = useRef(null);
-
-  const handleProvider = (p) => {
-    storeProvider(p);
-    setProvider(p);
-    setApiKey(getStoredKey(p));
-  };
-
-  const handleKey = (k) => {
-    setApiKey(k);
-    storeKey(provider, k);
-  };
 
   const ask = async () => {
     const q = query.trim();
     if (!q) return;
-    if (!apiKey) { setError('Enter your API key above first.'); return; }
+    // Always read fresh from storage so Settings changes are picked up immediately
+    const provider = getStoredProvider();
+    const apiKey   = getStoredKey(provider);
+    if (!apiKey) { setError('No API key set — configure one in ⚙ Settings.'); return; }
 
     setLoading(true);
     setError('');
@@ -257,12 +230,12 @@ export default function OracleScreen() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: G.bg }}>
-      <div style={{ background: '#0a0806', borderBottom: '1px solid #3a2e1e', padding: '12px 16px', flexShrink: 0 }}>
-        <div style={{ textAlign: 'center', marginBottom: 10 }}>
+      <div style={{ background: '#0a0806', borderBottom: '1px solid #3a2e1e', padding: '10px 16px', flexShrink: 0 }}>
+        <div style={{ textAlign: 'center', marginBottom: 6 }}>
           <span style={{ fontFamily: 'Cinzel Decorative,serif', fontSize: 16, color: G.gold }}>⚗ The Sphere Oracle</span>
           <p style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.muted, letterSpacing: '.2em', textTransform: 'uppercase', marginTop: 2 }}>Ask what spheres your effect requires</p>
         </div>
-        <ProviderBar provider={provider} apiKey={apiKey} onProvider={handleProvider} onKey={handleKey} />
+        <ProviderBadge />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 90px' }}>

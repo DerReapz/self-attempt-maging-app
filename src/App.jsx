@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { G } from './palette.js';
+import { applyTextSize } from './screens/SettingsScreen.jsx';
 import CharacterList   from './screens/CharacterList.jsx';
 import CharacterSheet  from './screens/CharacterSheet.jsx';
 import SphereReference from './screens/SphereReference.jsx';
 import SpellsRituals   from './screens/SpellsRituals.jsx';
 import OracleScreen    from './screens/OracleScreen.jsx';
 import CassandraScreen from './screens/CassandraScreen.jsx';
+import SettingsScreen  from './screens/SettingsScreen.jsx';
+
+// Apply stored text size immediately on load
+applyTextSize(localStorage.getItem('mage_text_size') || 'normal');
 
 const TABS = [
   { id: 'chars',     label: 'Characters', icon: '⬟' },
@@ -13,6 +18,7 @@ const TABS = [
   { id: 'spheres',   label: 'Spheres',    icon: '⬡' },
   { id: 'oracle',    label: 'Oracle',     icon: '⚗' },
   { id: 'cassandra', label: 'Cassandra',  icon: '⚜' },
+  { id: 'settings',  label: 'Settings',   icon: '⚙' },
 ];
 
 function BottomNav({ active, onChange }) {
@@ -47,7 +53,7 @@ function BottomNav({ active, onChange }) {
               {tab.icon}
             </span>
             <span style={{
-              fontFamily: 'Cinzel,serif', fontSize: 7, letterSpacing: '.08em',
+              fontFamily: 'Cinzel,serif', fontSize: 6, letterSpacing: '.06em',
               color: isActive ? G.gold : G.muted, textTransform: 'uppercase',
             }}>
               {tab.label}
@@ -92,6 +98,9 @@ export default function App() {
         </div>
         <div style={{ position: 'absolute', inset: 0, display: activeTab === 'cassandra' ? 'flex' : 'none', flexDirection: 'column' }}>
           <CassandraScreen />
+        </div>
+        <div style={{ position: 'absolute', inset: 0, display: activeTab === 'settings'  ? 'flex' : 'none', flexDirection: 'column' }}>
+          <SettingsScreen />
         </div>
       </div>
 
