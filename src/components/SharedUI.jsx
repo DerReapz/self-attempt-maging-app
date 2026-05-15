@@ -155,17 +155,19 @@ export function TArea({ label, value, onChange, rows = 4 }) {
 export function SphereBlock({ sphere, onUpdate }) {
   const G = useTheme();
   return (
-    <div style={{ marginBottom: 10, padding: '8px 10px', border: `1px solid ${G.goldFaint}`, borderRadius: 3 }}>
+    <div style={{ marginBottom: 10, padding: '8px 10px', border: `1px solid ${G.goldFaint}`, borderRadius: 3, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <input value={sphere.name} onChange={(e) => onUpdate({ ...sphere, name: e.target.value })} placeholder="Sphere…"
-          style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldDim}`, color: G.text, fontFamily: 'Cinzel,serif', fontSize: 12, outline: 'none', padding: '1px 2px' }} />
-        <Dots max={5} value={sphere.value} onChange={(v) => onUpdate({ ...sphere, value: v })} color={G.purple} />
+          style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldDim}`, color: G.text, fontFamily: 'Cinzel,serif', fontSize: 12, outline: 'none', padding: '1px 2px' }} />
+        <span style={{ flexShrink: 0 }}>
+          <Dots max={5} value={sphere.value} onChange={(v) => onUpdate({ ...sphere, value: v })} color={G.purple} />
+        </span>
       </div>
       {sphere.descs.map((d, i) => (
         <div key={i} style={{ display: 'flex', gap: 5, alignItems: 'baseline', marginBottom: 3 }}>
-          <span style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.goldDim, minWidth: 10 }}>{i + 1}</span>
+          <span style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.goldDim, minWidth: 10, flexShrink: 0 }}>{i + 1}</span>
           <input value={d} onChange={(e) => onUpdate({ ...sphere, descs: sphere.descs.map((x, j) => j === i ? e.target.value : x) })}
-            style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.textDim, fontSize: 12, outline: 'none', padding: '1px 2px' }} />
+            style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.textDim, fontSize: 12, outline: 'none', padding: '1px 2px' }} />
         </div>
       ))}
     </div>
