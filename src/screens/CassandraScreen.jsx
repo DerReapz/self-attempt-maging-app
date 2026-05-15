@@ -1,5 +1,37 @@
 import { useState } from 'react';
 import { G } from '../palette.js';
+import { PROVIDERS, getStoredProvider, getStoredKey, storeProvider, storeKey, callAI } from '../utils/aiProvider.js';
+
+function ProviderBar({ provider, apiKey, onProvider, onKey }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+        {PROVIDERS.map(p => {
+          const active = p.id === provider;
+          return (
+            <button key={p.id} onClick={() => onProvider(p.id)} style={{
+              flex: 1, fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.06em',
+              padding: '5px 2px', border: `1px solid ${active ? '#8a5a8a' : G.border}`,
+              borderRadius: 2, background: active ? '#8a5a8a22' : 'transparent',
+              color: active ? '#c090c0' : G.muted, cursor: 'pointer',
+            }}>{p.label}</button>
+          );
+        })}
+      </div>
+      <input
+        type="password"
+        value={apiKey}
+        onChange={e => onKey(e.target.value)}
+        placeholder={PROVIDERS.find(p => p.id === provider)?.hint || 'API key'}
+        style={{
+          width: '100%', background: '#1a1510', border: `1px solid ${G.goldFaint}`,
+          borderRadius: 2, color: G.textDim, fontFamily: 'monospace', fontSize: 11,
+          padding: '6px 8px', outline: 'none', boxSizing: 'border-box',
+        }}
+      />
+    </div>
+  );
+}
 
 const PARADIGM_EXAMPLES = [
   'Hermetic mage — Latin ritual and sacred geometry',
@@ -93,35 +125,39 @@ export default function CassandraScreen() {
   const [result,   setResult]   = useState(null);
   const [error,    setError]    = useState('');
   const [history,  setHistory]  = useState([]);
-  const [apiKey,   setApiKey]   = useState(() => localStorage.getItem('mage_api_key') || '');
+  const [provider, setProvider] = useState(() => getStoredProvider());
+  const [apiKey,   setApiKey]   = useState(() => getStoredKey(getStoredProvider()));
 
-  const saveKey = (k) => { setApiKey(k); localStorage.setItem('mage_api_key', k); };
+  const handleProvider = (p) => {
+    storeProvider(p);
+    setProvider(p);
+    setApiKey(getStoredKey(p));
+  };
+
+  const handleKey = (k) => {
+    setApiKey(k);
+    storeKey(provider, k);
+  };
 
   const ask = async () => {
     if (!paradigm.trim() || !effect.trim()) {
       setError('Please fill in both fields.');
       return;
     }
-    if (!apiKey) { setError('Enter your Anthropic API key first.'); return; }
+    if (!apiKey) { setError('Enter your API key first.'); return; }
 
     setLoading(true);
     setError('');
     setResult(null);
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          system: CASS_SYSTEM,
-          messages: [{ role: 'user', content: `Paradigm: ${paradigm}\n\nEffect: ${effect}` }],
-        }),
+      let raw = await callAI({
+        provider, apiKey,
+        system: CASS_SYSTEM,
+        userMessage: `Paradigm: ${paradigm}\n\nEffect: ${effect}`,
+        maxTokens: 2000,
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error.message);
-      let raw = data.content.map((b) => b.text || '').join('').trim().replace(/```json|```/g, '').trim();
+      raw = raw.replace(/```json|```/g, '').trim();
       let parsed;
       try { parsed = JSON.parse(raw); }
       catch { parsed = JSON.parse(repairJSON(raw)); }
@@ -141,13 +177,7 @@ export default function CassandraScreen() {
           <span style={{ fontFamily: 'Cinzel Decorative,serif', fontSize: 16, color: '#8a5a8a' }}>⚜ Cassandra</span>
           <p style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.muted, letterSpacing: '.2em', textTransform: 'uppercase', marginTop: 2 }}>Paradigm architect & mystical advisor</p>
         </div>
-        <input
-          placeholder="Anthropic API Key (stored locally)"
-          value={apiKey}
-          onChange={(e) => saveKey(e.target.value)}
-          type="password"
-          style={{ width: '100%', background: '#1a1510', border: `1px solid ${G.goldFaint}`, borderRadius: 2, color: G.textDim, fontFamily: 'monospace', fontSize: 11, padding: '6px 8px', outline: 'none', marginBottom: 0, boxSizing: 'border-box' }}
-        />
+        <ProviderBar provider={provider} apiKey={apiKey} onProvider={handleProvider} onKey={handleKey} />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px 90px' }}>
