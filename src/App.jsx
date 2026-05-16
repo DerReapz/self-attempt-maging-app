@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme } from './context/ThemeContext.jsx';
 import { applyTextSize } from './screens/SettingsScreen.jsx';
+import { startAutoBackupScheduler, stopAutoBackupScheduler } from './utils/autoBackup.js';
 import CharacterList    from './screens/CharacterList.jsx';
 import CharacterSheet   from './screens/CharacterSheet.jsx';
 import CharacterCreator from './screens/CharacterCreator.jsx';
@@ -70,6 +71,11 @@ function BottomNav({ active, onChange }) {
 export default function App() {
   const G = useTheme();
   const [activeTab,    setActiveTab]    = useState('chars');
+
+  useEffect(() => {
+    startAutoBackupScheduler();
+    return () => stopAutoBackupScheduler();
+  }, []);
   const [openCharId,   setOpenCharId]   = useState(null);
   const [showCreator,  setShowCreator]  = useState(false);
 
