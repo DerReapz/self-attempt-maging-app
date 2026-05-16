@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { SPHERE_COLORS } from '../palette.js';
 import { useTheme } from '../context/ThemeContext.jsx';
-import { PROVIDERS, getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
+import { PROVIDERS, WEB_PROVIDERS, getStoredProvider, getStoredKey, callAI, getStoredMode, getStoredWebProvider, openInWeb } from '../utils/aiProvider.js';
 
 
 const LEVEL_DOTS  = ['','●','●●','●●●','●●●●','●●●●●','●●●●●⁺','●●●●●⁺⁺','●●●●●⁺⁺⁺','●●●●●⁺⁺⁺⁺','●●●●●⁺⁺⁺⁺⁺'];
@@ -185,8 +185,20 @@ function ResultBlock({ data }) {
 
 function ProviderBadge() {
   const G = useTheme();
-  const id    = getStoredProvider();
-  const label = PROVIDERS.find(p => p.id === id)?.label || id;
+  const mode = getStoredMode();
+  if (mode === 'web') {
+    const wpId  = getStoredWebProvider();
+    const wProv = WEB_PROVIDERS.find(p => p.id === wpId) || WEB_PROVIDERS[0];
+    return (
+      <div style={{ textAlign: 'center', fontSize: 10, color: G.muted }}>
+        <span style={{ color: G.teal }}>◉</span>
+        {' '}Browser · {wProv.label}{' · '}
+        <span style={{ fontFamily: 'Cinzel,serif', color: G.goldDim }}>⚙ Settings</span>
+      </div>
+    );
+  }
+  const id     = getStoredProvider();
+  const label  = PROVIDERS.find(p => p.id === id)?.label || id;
   const hasKey = !!getStoredKey(id);
   return (
     <div style={{ textAlign: 'center', fontSize: 10, color: G.muted }}>
@@ -203,19 +215,45 @@ export default function OracleScreen() {
   const [loading, setLoading] = useState(false);
   const [result,  setResult]  = useState(null);
   const [error,   setError]   = useState('');
+  const [info,    setInfo]    = useState('');
   const [history, setHistory] = useState([]);
   const inputRef = useRef(null);
 
   const ask = async () => {
     const q = query.trim();
     if (!q) return;
-    // Always read fresh from storage so Settings changes are picked up immediately
+
+    const mode = getStoredMode();
+
+    // ── Browser / web mode ─────────────────────────────────────────────────
+    if (mode === 'web') {
+      const wpId  = getStoredWebProvider();
+      const prov  = WEB_PROVIDERS.find(p => p.id === wpId) || WEB_PROVIDERS[0];
+      const prompt =
+        `Mage: The Ascension 2nd Edition — Sphere Oracle\n\n` +
+        `What Sphere(s) and minimum dot rating(s) are required for this magical effect? ` +
+        `Identify whether it would be Coincidental or Vulgar, explain the Paradox risk, ` +
+        `and if it could be used as an attack provide damage dice, damage type, range, area, and soak information.\n\n` +
+        `Effect: ${q}`;
+      setError('');
+      setResult(null);
+      const { copied } = await openInWeb(wpId, prompt);
+      setInfo(
+        copied
+          ? `Prompt copied to clipboard — paste it into ${prov.label} to get your ruling.`
+          : `Opening ${prov.label} — copy the query text above and paste it into the chat.`
+      );
+      return;
+    }
+
+    // ── Direct API mode ────────────────────────────────────────────────────
     const provider = getStoredProvider();
     const apiKey   = getStoredKey(provider);
     if (!apiKey) { setError('No API key set — configure one in ⚙ Settings.'); return; }
 
     setLoading(true);
     setError('');
+    setInfo('');
     setResult(null);
 
     try {
@@ -270,6 +308,7 @@ export default function OracleScreen() {
         </div>
 
         {error && <p style={{ color: '#c08080', fontStyle: 'italic', fontSize: 13, marginBottom: 10 }}>{error}</p>}
+        {info  && <p style={{ color: G.teal,    fontStyle: 'italic', fontSize: 13, marginBottom: 10 }}>{info}</p>}
         {loading && (
           <div style={{ textAlign: 'center', color: G.goldDim, fontFamily: 'Cinzel,serif', fontSize: 12, letterSpacing: '.2em', padding: 20 }}>
             Consulting the Tellurian…
