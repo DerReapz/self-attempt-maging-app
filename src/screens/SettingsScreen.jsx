@@ -8,6 +8,8 @@ import {
   NATIVE_DIRS, getNativeDir, setNativeDir,
   supportsFileSystemAccess, getStoredDirHandle, pickBackupFolder, clearDirHandle,
 } from '../utils/backupLocation.js';
+import { CLOUD_PROVIDERS, } from '../utils/cloudBackup.js';
+import { getCloudConfig, setCloudConfig, runCloudBackup } from '../utils/autoBackup.js';
 
 const TEXT_SIZES = [
   { id: 'normal', label: 'Normal', zoom: '1'    },
@@ -248,6 +250,160 @@ function BackupLocationSection() {
   );
 }
 
+function relativeTime(isoStr) {
+  if (!isoStr) return null;
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1)   return 'just now';
+  if (mins < 60)  return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs  < 24)  return `${hrs} h ago`;
+  return new Date(isoStr).toLocaleDateString();
+}
+
+function CloudBackupSection() {
+  const G = useTheme();
+  const [cfg,     setCfg]     = useState(() => getCloudConfig());
+  const [status,  setStatus]  = useState('');
+  const [running, setRunning] = useState(false);
+
+  // Refresh display every 30 s so relative timestamps stay current
+  useEffect(() => {
+    const id = setInterval(() => setCfg(getCloudConfig()), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  const save = (partial) => { setCloudConfig(partial); setCfg(getCloudConfig()); };
+
+  const handleToggle = () => save({ enabled: !cfg.enabled });
+
+  const handleTestNow = async () => {
+    setRunning(true); setStatus('');
+    try {
+      await runCloudBackup();
+      setCfg(getCloudConfig());
+      setStatus('✓ Backup succeeded');
+    } catch (e) {
+      setCfg(getCloudConfig());
+      setStatus('✗ ' + e.message);
+    } finally { setRunning(false); }
+  };
+
+  const prov      = CLOUD_PROVIDERS.find(p => p.id === cfg.provider);
+  const isWebDAV  = prov?.authType === 'webdav';
+  const pill      = (active) => ({
+    flex: '1 1 80px', fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.08em',
+    padding: '8px 4px', borderRadius: 2, cursor: 'pointer', textAlign: 'center',
+    border:      `1px solid ${active ? G.gold : G.border}`,
+    background:  active ? G.goldFaint : 'transparent',
+    color:       active ? G.gold : G.muted,
+  });
+  const inputSt = {
+    width: '100%', boxSizing: 'border-box', background: '#1a1510',
+    border: `1px solid ${G.border}`, borderRadius: 2, color: G.text,
+    fontFamily: 'EB Garamond,serif', fontSize: 13, padding: '7px 10px', outline: 'none',
+    marginBottom: 6,
+  };
+
+  return (
+    <Section title="Cloud Auto-Backup">
+      {/* Enable / disable */}
+      <button onClick={handleToggle} style={{
+        width: '100%', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: '.14em',
+        padding: '11px', borderRadius: 2, cursor: 'pointer', marginBottom: 12,
+        border:     `1px solid ${cfg.enabled ? G.teal : G.border}`,
+        background: cfg.enabled ? `${G.teal}15` : 'transparent',
+        color:      cfg.enabled ? G.teal : G.muted,
+      }}>
+        {cfg.enabled ? '◉ Enabled — backs up every 15 minutes' : '○ Disabled — click to enable'}
+      </button>
+
+      {cfg.enabled && (
+        <>
+          {/* Provider pills */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+            {CLOUD_PROVIDERS.map(p => (
+              <button key={p.id} onClick={() => save({ provider: p.id })} style={pill(cfg.provider === p.id)}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Credentials */}
+          {prov && (
+            <div style={{ marginBottom: 10 }}>
+              {isWebDAV ? (
+                <>
+                  <input
+                    placeholder={prov.urlHint || 'https://webdav.example.com'}
+                    value={cfg.url}
+                    onChange={e => save({ url: e.target.value })}
+                    style={inputSt}
+                  />
+                  <input
+                    placeholder="Username (leave blank if none)"
+                    value={cfg.username}
+                    onChange={e => save({ username: e.target.value })}
+                    style={inputSt}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password (leave blank if none)"
+                    value={cfg.password}
+                    onChange={e => save({ password: e.target.value })}
+                    style={inputSt}
+                  />
+                </>
+              ) : (
+                <input
+                  placeholder={prov.tokenHint}
+                  value={cfg.token}
+                  onChange={e => save({ token: e.target.value })}
+                  style={{ ...inputSt, fontFamily: 'monospace', fontSize: 11 }}
+                />
+              )}
+              <p style={{ fontSize: 11, color: G.muted, lineHeight: 1.6, marginBottom: 10 }}>
+                {isWebDAV ? prov.urlHelp : prov.tokenHelp}
+              </p>
+            </div>
+          )}
+
+          {/* Status */}
+          <div style={{ marginBottom: 10 }}>
+            {cfg.lastOk && (
+              <div style={{ fontSize: 11, color: G.teal, marginBottom: 3 }}>
+                ✓ Last backup: {relativeTime(cfg.lastOk)}
+              </div>
+            )}
+            {cfg.lastErr && (
+              <div style={{ fontSize: 11, color: '#c08080', marginBottom: 3, wordBreak: 'break-word' }}>
+                ✗ Last error: {cfg.lastErr}
+              </div>
+            )}
+            {status && (
+              <div style={{ fontSize: 11, color: status.startsWith('✓') ? G.teal : '#c08080', marginBottom: 3 }}>
+                {status}
+              </div>
+            )}
+          </div>
+
+          {/* Test now button */}
+          {cfg.provider && (
+            <button onClick={handleTestNow} disabled={running} style={{
+              width: '100%', fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: '.14em',
+              padding: '10px', borderRadius: 2, cursor: running ? 'not-allowed' : 'pointer',
+              border: `1px solid ${G.gold}66`, background: 'transparent',
+              color: G.goldDim, opacity: running ? 0.6 : 1,
+            }}>
+              {running ? '↑ Backing up…' : '↑ Test Backup Now'}
+            </button>
+          )}
+        </>
+      )}
+    </Section>
+  );
+}
+
 export default function SettingsScreen() {
   const G = useTheme();
   const [provider, setProvider] = useState(() => getStoredProvider());
@@ -409,6 +565,8 @@ export default function SettingsScreen() {
           </div>
           <Hint>Scales all content including icons. Takes effect immediately.</Hint>
         </Section>
+
+        <CloudBackupSection />
 
         <BackupLocationSection />
 
