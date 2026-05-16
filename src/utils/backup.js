@@ -25,12 +25,40 @@ export async function exportAllAsPDFZip(chars) {
     zip(files, { level: 6 }, (err, data) => (err ? reject(err) : resolve(data)));
   });
 
-  const blob = new Blob([zipBytes], { type: 'application/zip' });
-  const url  = URL.createObjectURL(blob);
-  const ts   = new Date().toISOString().slice(0, 10);
-  const a    = Object.assign(document.createElement('a'), {
-    href: url, download: `mage_backup_${ts}.zip`,
-  });
+  const ts       = new Date().toISOString().slice(0, 10);
+  const filename = `mage_backup_${ts}.zip`;
+  const blob     = new Blob([zipBytes], { type: 'application/zip' });
+
+  // Try native Capacitor path
+  try {
+    const { Capacitor } = await import('@capacitor/core');
+    if (Capacitor?.isNativePlatform?.()) {
+      const { getNativeDir } = await import('./backupLocation.js');
+      const dirId = getNativeDir();
+      const { Filesystem, Directory } = await import('@capacitor/filesystem');
+      const dir  = Directory[dirId] || Directory.Documents;
+      const path = dirId === 'ExternalStorage' ? `MageBackups/${filename}` : filename;
+      if (dirId === 'ExternalStorage') {
+        try { await Filesystem.mkdir({ path: 'MageBackups', directory: dir, recursive: true }); } catch {}
+      }
+      const ab     = await blob.arrayBuffer();
+      const bytes  = new Uint8Array(ab);
+      let bin = '';
+      bytes.forEach(b => { bin += String.fromCharCode(b); });
+      await Filesystem.writeFile({ path, data: btoa(bin), directory: dir });
+      return;
+    }
+  } catch { /* fall through */ }
+
+  // Try the user's chosen folder (File System Access API)
+  try {
+    const { saveToDirHandle } = await import('./backupLocation.js');
+    if (await saveToDirHandle(filename, blob)) return;
+  } catch { /* fall through */ }
+
+  // Fall back to browser download
+  const url = URL.createObjectURL(blob);
+  const a   = Object.assign(document.createElement('a'), { href: url, download: filename });
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

@@ -359,13 +359,21 @@ export async function exportCharAsPDF(ch) {
   const isNative = await detectNative();
 
   if (isNative) {
-    // Reuse the existing native path
     return exportToPDF(ch);
   }
 
   const blob = new Blob([buildPDFDoc(ch).output('arraybuffer')], { type: 'application/pdf' });
-  const url  = URL.createObjectURL(blob);
-  const a    = Object.assign(document.createElement('a'), { href: url, download: `${safeName}.pdf` });
+  const filename = `${safeName}.pdf`;
+
+  // Try the user's chosen folder first (File System Access API)
+  try {
+    const { saveToDirHandle } = await import('./backupLocation.js');
+    if (await saveToDirHandle(filename, blob)) return { method: 'pdf-dir-write' };
+  } catch { /* fall through to download */ }
+
+  // Fall back to browser download
+  const url = URL.createObjectURL(blob);
+  const a   = Object.assign(document.createElement('a'), { href: url, download: filename });
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -379,18 +387,21 @@ export async function exportToPDF(ch) {
   const isNative = await detectNative();
 
   if (isNative) {
-    // Native (Android): generate real PDF, save to Documents, share
-    const doc = buildPDFDoc(ch);
+    // Native (Android): generate real PDF, save to configured directory, share
+    const { getNativeDir } = await import('./backupLocation.js');
+    const dirId = getNativeDir();
+    const doc    = buildPDFDoc(ch);
     const base64 = arrayBufferToBase64(doc.output('arraybuffer'));
     const { Filesystem, Directory } = await import('@capacitor/filesystem');
     const fileName = `${safeName}.pdf`;
-    const writeResult = await Filesystem.writeFile({
-      path: fileName,
-      data: base64,
-      directory: Directory.Documents,
-    });
+    const dir      = Directory[dirId] || Directory.Documents;
+    const path     = dirId === 'ExternalStorage' ? `MageBackups/${fileName}` : fileName;
+    if (dirId === 'ExternalStorage') {
+      try { await Filesystem.mkdir({ path: 'MageBackups', directory: dir, recursive: true }); } catch {}
+    }
+    const writeResult = await Filesystem.writeFile({ path, data: base64, directory: dir });
     const uri = writeResult?.uri
-      || (await Filesystem.getUri({ path: fileName, directory: Directory.Documents })).uri;
+      || (await Filesystem.getUri({ path, directory: dir })).uri;
     try {
       const { Share } = await import('@capacitor/share');
       await Share.share({
