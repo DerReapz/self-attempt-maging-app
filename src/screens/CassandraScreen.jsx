@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext.jsx';
-import { PROVIDERS, getStoredProvider, getStoredKey, callAI } from '../utils/aiProvider.js';
+import { PROVIDERS, WEB_PROVIDERS, getStoredProvider, getStoredKey, callAI, getStoredMode, getStoredWebProvider, openInWeb } from '../utils/aiProvider.js';
 
 const PARADIGM_EXAMPLES = [
   'Hermetic mage — Latin ritual and sacred geometry',
@@ -56,6 +56,18 @@ function repairJSON(str) {
 
 function CassProviderBadge() {
   const G = useTheme();
+  const mode = getStoredMode();
+  if (mode === 'web') {
+    const wpId  = getStoredWebProvider();
+    const wProv = WEB_PROVIDERS.find(p => p.id === wpId) || WEB_PROVIDERS[0];
+    return (
+      <div style={{ textAlign: 'center', fontSize: 10, color: G.muted }}>
+        <span style={{ color: G.teal }}>◉</span>
+        {' '}Browser · {wProv.label}{' · '}
+        <span style={{ fontFamily: 'Cinzel,serif', color: '#8a5a8a' }}>⚙ Settings</span>
+      </div>
+    );
+  }
   const id    = getStoredProvider();
   const label = PROVIDERS.find(p => p.id === id)?.label || id;
   const hasKey = !!getStoredKey(id);
@@ -109,6 +121,7 @@ export default function CassandraScreen() {
   const [loading,  setLoading]  = useState(false);
   const [result,   setResult]   = useState(null);
   const [error,    setError]    = useState('');
+  const [info,     setInfo]     = useState('');
   const [history,  setHistory]  = useState([]);
 
   const ask = async () => {
@@ -116,12 +129,37 @@ export default function CassandraScreen() {
       setError('Please fill in both fields.');
       return;
     }
+
+    const mode = getStoredMode();
+
+    // ── Browser / web mode ─────────────────────────────────────────────────
+    if (mode === 'web') {
+      const wpId  = getStoredWebProvider();
+      const prov  = WEB_PROVIDERS.find(p => p.id === wpId) || WEB_PROVIDERS[0];
+      const prompt =
+        `Mage: The Ascension 2nd Edition — Paradigm Consultation\n\n` +
+        `How would a mage with this Paradigm perform the described Effect? ` +
+        `Cover: paradigm alignment, the working in first-person detail, 2-3 suggested focuses/instruments, ` +
+        `coincidental framing, paradigm strain/Quiet risk, and a roleplay note.\n\n` +
+        `Paradigm: ${paradigm.trim()}\nEffect: ${effect.trim()}`;
+      setError('');
+      setResult(null);
+      const { copied } = await openInWeb(wpId, prompt);
+      setInfo(
+        copied
+          ? `Prompt copied to clipboard — paste it into ${prov.label} to get your consultation.`
+          : `Opening ${prov.label} — copy the query text above and paste it into the chat.`
+      );
+      return;
+    }
+
     const provider = getStoredProvider();
     const apiKey   = getStoredKey(provider);
     if (!apiKey) { setError('No API key set — configure one in ⚙ Settings.'); return; }
 
     setLoading(true);
     setError('');
+    setInfo('');
     setResult(null);
 
     try {
@@ -191,6 +229,7 @@ export default function CassandraScreen() {
         </button>
 
         {error && <p style={{ color: '#c08080', fontStyle: 'italic', fontSize: 13, marginBottom: 10 }}>{error}</p>}
+        {info  && <p style={{ color: G.teal,    fontStyle: 'italic', fontSize: 13, marginBottom: 10 }}>{info}</p>}
         {result && <CassandraResult data={result} />}
 
         {history.length > 0 && (
