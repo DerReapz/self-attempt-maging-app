@@ -125,10 +125,30 @@ function buildCharacterHTML(ch) {
 // ── jsPDF renderer (used on native Android) ─────────────────────────────────
 const PAGE_W = 595, PAGE_H = 842, M = 36;
 
+function chToBase64(ch) {
+  const json  = JSON.stringify(ch);
+  const bytes = new TextEncoder().encode(json);
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+}
+
 function buildPDFDoc(ch) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const s = ch.sheet || {};
   const id = s.identity || {};
+
+  // Embed character data so this PDF can be re-imported into the app.
+  try {
+    doc.setProperties({
+      title:    `Mage: The Ascension — ${id.name || 'Character Sheet'}`,
+      subject:  'Mage: The Ascension 2nd Edition Character Sheet',
+      author:   'Mage Companion App',
+      keywords: 'MAGE_DATA:' + chToBase64(ch),
+      creator:  'Mage Companion',
+    });
+  } catch { /* non-critical */ }
+
   const colW = (PAGE_W - 2*M - 16) / 3;
   let y = M;
 
@@ -326,6 +346,31 @@ async function detectNative() {
   } catch {
     return false;
   }
+}
+
+// Returns raw PDF bytes (Uint8Array) without any side effects.
+export function buildPDFBytes(ch) {
+  return buildPDFDoc(ch).output('uint8array');
+}
+
+// Download a single character as a PDF file in the browser.
+export async function exportCharAsPDF(ch) {
+  const safeName = (ch.sheet?.identity?.name || 'mage_character').replace(/[^a-z0-9_\- ]/gi, '_');
+  const isNative = await detectNative();
+
+  if (isNative) {
+    // Reuse the existing native path
+    return exportToPDF(ch);
+  }
+
+  const blob = new Blob([buildPDFDoc(ch).output('arraybuffer')], { type: 'application/pdf' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `${safeName}.pdf` });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  return { method: 'pdf-download' };
 }
 
 // ── Public entry point ─────────────────────────────────────────────────────

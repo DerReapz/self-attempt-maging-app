@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useTheme, useSetTheme, THEMES, buildCustomTheme } from '../context/ThemeContext.jsx';
-import { PROVIDERS, getStoredProvider, getStoredKey } from '../utils/aiProvider.js';
+import { PROVIDERS, WEB_PROVIDERS, getStoredProvider, getStoredKey, getStoredMode, storeMode, getStoredWebProvider, storeWebProvider } from '../utils/aiProvider.js';
 import ProviderBar from '../components/ProviderBar.jsx';
 import { exportCharsToJson } from '../utils/storage.js';
+import { exportAllAsPDFZip } from '../utils/backup.js';
 
 const TEXT_SIZES = [
   { id: 'normal', label: 'Normal', zoom: '1'    },
@@ -145,8 +146,13 @@ function ThemeSection() {
 export default function SettingsScreen() {
   const G = useTheme();
   const [provider, setProvider] = useState(() => getStoredProvider());
-  const [apiKey,   setApiKey]   = useState(() => getStoredKey(getStoredProvider()));
-  const [textSize, setTextSize] = useState(() => localStorage.getItem('mage_text_size') || 'normal');
+  const [aiMode,    setAiMode]    = useState(() => getStoredMode());
+  const [webProv,   setWebProv]   = useState(() => getStoredWebProvider());
+  const [apiKey,    setApiKey]    = useState(() => getStoredKey(getStoredProvider()));
+  const [textSize,  setTextSize]  = useState(() => localStorage.getItem('mage_text_size') || 'normal');
+
+  const handleAiMode = (m) => { setAiMode(m); storeMode(m); };
+  const handleWebProv = (id) => { setWebProv(id); storeWebProvider(id); };
   const [toast,    setToast]    = useState('');
 
   const showToast = (msg, ms = 2500) => {
@@ -159,12 +165,28 @@ export default function SettingsScreen() {
     applyTextSize(id);
   };
 
+  const [backupBusy, setBackupBusy] = useState(false);
+
   const handleExport = async () => {
     try {
       const uri = await exportCharsToJson();
       showToast(uri ? `Saved to ${uri}` : 'Exported ✓', 4000);
     } catch (e) {
       showToast('Export failed: ' + e.message);
+    }
+  };
+
+  const handleBackupZip = async () => {
+    if (backupBusy) return;
+    setBackupBusy(true);
+    try {
+      const { loadAll } = await import('../utils/storage.js');
+      await exportAllAsPDFZip(loadAll());
+      showToast('Backup ZIP downloaded ✓', 4000);
+    } catch (e) {
+      showToast('Backup failed: ' + e.message);
+    } finally {
+      setBackupBusy(false);
     }
   };
 
@@ -185,30 +207,80 @@ export default function SettingsScreen() {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px 16px 110px', minHeight: 0 }}>
 
-        <Section title="AI Provider & Keys">
-          <p style={{ fontSize: 12, color: G.textDim, lineHeight: 1.7, marginBottom: 14 }}>
-            Select a provider, enter your API key, then tap <strong style={{ color: G.gold, fontFamily: 'Cinzel,serif', fontSize: 10 }}>Save</strong>.
-            Keys are stored only on this device and sent only to the provider's own API.
-          </p>
-          <ProviderBar
-            provider={provider}
-            apiKey={apiKey}
-            onProvider={p => { setProvider(p); setApiKey(getStoredKey(p)); }}
-            onKey={k => setApiKey(k)}
-          />
-          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {PROVIDERS.map(p => {
-              const saved = !!getStoredKey(p.id);
+        <Section title="AI Query Mode">
+          {/* Mode toggle */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            {[['api','Direct API'],['web','Open in Browser']].map(([m, lbl]) => {
+              const active = aiMode === m;
               return (
-                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                  <span style={{ color: G.muted, fontFamily: 'Cinzel,serif', letterSpacing: '.06em' }}>{p.label}</span>
-                  <span style={{ color: saved ? G.teal : '#555', fontFamily: 'Cinzel,serif' }}>
-                    {saved ? '✓ key saved' : '— not set'}
-                  </span>
-                </div>
+                <button key={m} onClick={() => handleAiMode(m)} style={{
+                  flex: 1, fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.1em',
+                  padding: '10px 4px', borderRadius: 2, cursor: 'pointer',
+                  border: `1px solid ${active ? G.gold : G.border}`,
+                  background: active ? G.goldFaint : 'transparent',
+                  color: active ? G.gold : G.muted,
+                }}>
+                  {lbl}
+                </button>
               );
             })}
           </div>
+
+          {aiMode === 'api' ? (
+            <>
+              <p style={{ fontSize: 12, color: G.textDim, lineHeight: 1.7, marginBottom: 14 }}>
+                Queries are answered directly in the app using your API key.
+                Select a provider, enter your key, then tap <strong style={{ color: G.gold, fontFamily: 'Cinzel,serif', fontSize: 10 }}>Save</strong>.
+                Keys are stored only on this device.
+              </p>
+              <ProviderBar
+                provider={provider}
+                apiKey={apiKey}
+                onProvider={p => { setProvider(p); setApiKey(getStoredKey(p)); }}
+                onKey={k => setApiKey(k)}
+              />
+              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {PROVIDERS.map(p => {
+                  const saved = !!getStoredKey(p.id);
+                  return (
+                    <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                      <span style={{ color: G.muted, fontFamily: 'Cinzel,serif', letterSpacing: '.06em' }}>{p.label}</span>
+                      <span style={{ color: saved ? G.teal : '#555', fontFamily: 'Cinzel,serif' }}>
+                        {saved ? '✓ key saved' : '— not set'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 12, color: G.textDim, lineHeight: 1.7, marginBottom: 14 }}>
+                Your query is formatted and copied to clipboard, then the selected AI's chat opens in your browser — just paste and go. No API key needed.
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {WEB_PROVIDERS.map(p => {
+                  const active = webProv === p.id;
+                  return (
+                    <button key={p.id} onClick={() => handleWebProv(p.id)} style={{
+                      flex: '1 1 80px', fontFamily: 'Cinzel,serif', fontSize: 11,
+                      letterSpacing: '.1em', padding: '10px 4px', borderRadius: 2, cursor: 'pointer',
+                      border: `1px solid ${active ? G.gold : G.border}`,
+                      background: active ? G.goldFaint : 'transparent',
+                      color: active ? G.gold : G.muted,
+                    }}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 11, color: G.muted, lineHeight: 1.6, marginTop: 10 }}>
+                Selected: <span style={{ color: G.gold, fontFamily: 'Cinzel,serif' }}>
+                  {WEB_PROVIDERS.find(p => p.id === webProv)?.label}
+                </span> — tap Ask in Oracle or Cassandra, then paste the copied prompt into the chat.
+              </p>
+            </>
+          )}
         </Section>
 
         <ThemeSection />
@@ -234,11 +306,15 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title="Character Data">
-          <ActionBtn color={G.teal} onClick={handleExport}>↓ Export All Characters</ActionBtn>
-          <Hint>Saves mage_characters.json to your device's Documents folder.</Hint>
+          <ActionBtn color={G.teal} onClick={handleBackupZip}>{backupBusy ? 'Building…' : '↓ Backup All — PDF ZIP'}</ActionBtn>
+          <Hint>Exports every character as a PDF, bundled into a single .zip file.</Hint>
+          <div style={{ marginTop: 10 }}>
+            <ActionBtn color={G.goldDim} onClick={handleExport}>↓ Export .mage (JSON)</ActionBtn>
+            <Hint>Saves mage_characters.json — use this to re-import characters into the app.</Hint>
+          </div>
           <div style={{ marginTop: 14 }}>
             <ActionBtn color={G.red} onClick={handleClearChars}>✕ Delete All Characters</ActionBtn>
-            <Hint>Permanently removes all character data from this device. Export first to keep a backup.</Hint>
+            <Hint>Permanently removes all character data from this device. Backup first to keep a copy.</Hint>
           </div>
         </Section>
 
