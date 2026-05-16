@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTheme } from './context/ThemeContext.jsx';
 import { applyTextSize } from './screens/SettingsScreen.jsx';
 import { startAutoBackupScheduler, stopAutoBackupScheduler } from './utils/autoBackup.js';
+import { startAutoSync } from './lib/dmSync.js';
 import CharacterList    from './screens/CharacterList.jsx';
 import CharacterSheet   from './screens/CharacterSheet.jsx';
 import CharacterCreator from './screens/CharacterCreator.jsx';
@@ -74,6 +75,7 @@ export default function App() {
 
   useEffect(() => {
     startAutoBackupScheduler();
+    startAutoSync();
     return () => stopAutoBackupScheduler();
   }, []);
   const [openCharId,   setOpenCharId]   = useState(null);
