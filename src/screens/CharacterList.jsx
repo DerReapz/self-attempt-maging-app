@@ -2,6 +2,8 @@ import { useState, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { Toast } from '../components/SharedUI.jsx';
 import { loadAll, saveAll, newId, exportCharsToJson } from '../utils/storage.js';
+import { exportCharAsPDF } from '../utils/pdfExport.js';
+import { exportAllAsPDFZip } from '../utils/backup.js';
 
 export default function CharacterList({ onOpen, onStartCreate }) {
   const G = useTheme();
@@ -60,6 +62,20 @@ export default function CharacterList({ onOpen, onStartCreate }) {
     }
   };
 
+  const handleBackupZip = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      toast2('Building PDF backup…', 60000);
+      await exportAllAsPDFZip(chars);
+      toast2('Backup ZIP downloaded ✓', 4000);
+    } catch (e) {
+      toast2('Backup failed: ' + e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleDelete = (id, name) => {
     if (!window.confirm(`Delete "${name || 'Unnamed Mage'}"?`)) return;
     const updated = { ...loadAll() };
@@ -68,16 +84,13 @@ export default function CharacterList({ onOpen, onStartCreate }) {
     setChars(updated);
   };
 
-  const handleExportSingle = (ch) => {
-    const name = (ch.sheet?.identity?.name || 'mage_character').replace(/[^a-z0-9_\- ]/gi, '_');
-    const blob = new Blob([JSON.stringify(ch, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement('a'), { href: url, download: name + '.mage' });
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast2('Exported ✓');
+  const handleExportSingle = async (ch) => {
+    try {
+      await exportCharAsPDF(ch);
+      toast2('PDF downloaded ✓');
+    } catch (e) {
+      toast2('PDF export failed: ' + e.message);
+    }
   };
 
   const refreshChars = () => setChars(loadAll());
@@ -114,7 +127,8 @@ export default function CharacterList({ onOpen, onStartCreate }) {
       <div style={{ display: 'flex', gap: 10, padding: '0 16px 12px', flexWrap: 'wrap' }}>
         <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleNew}>+ Blank Sheet</button>
         <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleImport} disabled={busy}>{busy ? 'Importing…' : '↑ Import .mage'}</button>
-        <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleExportAll}>↓ Export DB</button>
+        <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleExportAll}>↓ Export .mage</button>
+        <button style={btnS({ fontSize: 10, color: G.teal, borderColor: `${G.teal}55` })} onClick={handleBackupZip} disabled={busy}>{busy ? 'Building…' : '↓ Backup PDF ZIP'}</button>
       </div>
 
       <div style={{ padding: '0 16px 100px', maxWidth: 620, margin: '0 auto' }}>

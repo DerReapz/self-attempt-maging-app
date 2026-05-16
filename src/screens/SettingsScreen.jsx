@@ -3,6 +3,7 @@ import { useTheme, useSetTheme, THEMES, buildCustomTheme } from '../context/Them
 import { PROVIDERS, WEB_PROVIDERS, getStoredProvider, getStoredKey, getStoredMode, storeMode, getStoredWebProvider, storeWebProvider } from '../utils/aiProvider.js';
 import ProviderBar from '../components/ProviderBar.jsx';
 import { exportCharsToJson } from '../utils/storage.js';
+import { exportAllAsPDFZip } from '../utils/backup.js';
 
 const TEXT_SIZES = [
   { id: 'normal', label: 'Normal', zoom: '1'    },
@@ -164,12 +165,28 @@ export default function SettingsScreen() {
     applyTextSize(id);
   };
 
+  const [backupBusy, setBackupBusy] = useState(false);
+
   const handleExport = async () => {
     try {
       const uri = await exportCharsToJson();
       showToast(uri ? `Saved to ${uri}` : 'Exported ✓', 4000);
     } catch (e) {
       showToast('Export failed: ' + e.message);
+    }
+  };
+
+  const handleBackupZip = async () => {
+    if (backupBusy) return;
+    setBackupBusy(true);
+    try {
+      const { loadAll } = await import('../utils/storage.js');
+      await exportAllAsPDFZip(loadAll());
+      showToast('Backup ZIP downloaded ✓', 4000);
+    } catch (e) {
+      showToast('Backup failed: ' + e.message);
+    } finally {
+      setBackupBusy(false);
     }
   };
 
@@ -289,11 +306,15 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title="Character Data">
-          <ActionBtn color={G.teal} onClick={handleExport}>↓ Export All Characters</ActionBtn>
-          <Hint>Saves mage_characters.json to your device's Documents folder.</Hint>
+          <ActionBtn color={G.teal} onClick={handleBackupZip}>{backupBusy ? 'Building…' : '↓ Backup All — PDF ZIP'}</ActionBtn>
+          <Hint>Exports every character as a PDF, bundled into a single .zip file.</Hint>
+          <div style={{ marginTop: 10 }}>
+            <ActionBtn color={G.goldDim} onClick={handleExport}>↓ Export .mage (JSON)</ActionBtn>
+            <Hint>Saves mage_characters.json — use this to re-import characters into the app.</Hint>
+          </div>
           <div style={{ marginTop: 14 }}>
             <ActionBtn color={G.red} onClick={handleClearChars}>✕ Delete All Characters</ActionBtn>
-            <Hint>Permanently removes all character data from this device. Export first to keep a backup.</Hint>
+            <Hint>Permanently removes all character data from this device. Backup first to keep a copy.</Hint>
           </div>
         </Section>
 

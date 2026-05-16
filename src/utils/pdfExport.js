@@ -328,6 +328,31 @@ async function detectNative() {
   }
 }
 
+// Returns raw PDF bytes (Uint8Array) without any side effects.
+export function buildPDFBytes(ch) {
+  return buildPDFDoc(ch).output('uint8array');
+}
+
+// Download a single character as a PDF file in the browser.
+export async function exportCharAsPDF(ch) {
+  const safeName = (ch.sheet?.identity?.name || 'mage_character').replace(/[^a-z0-9_\- ]/gi, '_');
+  const isNative = await detectNative();
+
+  if (isNative) {
+    // Reuse the existing native path
+    return exportToPDF(ch);
+  }
+
+  const blob = new Blob([buildPDFDoc(ch).output('arraybuffer')], { type: 'application/pdf' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: `${safeName}.pdf` });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  return { method: 'pdf-download' };
+}
+
 // ── Public entry point ─────────────────────────────────────────────────────
 export async function exportToPDF(ch) {
   const safeName = (ch.sheet?.identity?.name || 'mage_character').replace(/[^a-z0-9_\- ]/gi, '_');
