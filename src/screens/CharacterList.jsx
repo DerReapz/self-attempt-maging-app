@@ -3,7 +3,7 @@ import { useTheme } from '../context/ThemeContext.jsx';
 import { Toast } from '../components/SharedUI.jsx';
 import { loadAll, saveAll, newId, exportCharsToJson } from '../utils/storage.js';
 import { exportCharAsPDF } from '../utils/pdfExport.js';
-import { exportAllAsPDFZip } from '../utils/backup.js';
+import { exportAllAsPDFZip, importFromPDF, importFromPDFZip } from '../utils/backup.js';
 
 export default function CharacterList({ onOpen, onStartCreate }) {
   const G = useTheme();
@@ -30,22 +30,49 @@ export default function CharacterList({ onOpen, onStartCreate }) {
     if (busy) return;
     setBusy(true);
     try {
-      const data = await new Promise((res, rej) => {
-        const inp = Object.assign(document.createElement('input'), { type: 'file', accept: '.mage,.json' });
-        inp.onchange = async (e) => {
+      const file = await new Promise((res, rej) => {
+        const inp = Object.assign(document.createElement('input'), {
+          type: 'file', accept: '.mage,.json,.pdf,.zip',
+        });
+        inp.onchange = (e) => {
           const f = e.target.files?.[0];
-          if (!f) return rej(new Error('No file'));
-          try { res(JSON.parse(await f.text())); } catch { rej(new Error('Invalid file')); }
+          f ? res(f) : rej(new Error('No file'));
         };
         document.body.appendChild(inp);
         inp.click();
         document.body.removeChild(inp);
       });
-      const id = data.id || newId();
-      const updated = { ...loadAll(), [id]: { ...data, id, updatedAt: Date.now() } };
-      saveAll(updated);
-      setChars(updated);
-      toast2('Character imported ✓');
+
+      const name = file.name.toLowerCase();
+
+      if (name.endsWith('.pdf')) {
+        const ch      = await importFromPDF(file);
+        const id      = ch.id || newId();
+        const updated = { ...loadAll(), [id]: { ...ch, id, updatedAt: Date.now() } };
+        saveAll(updated);
+        setChars(updated);
+        toast2(`Restored "${ch.sheet?.identity?.name || 'Unnamed Mage'}" from PDF ✓`);
+
+      } else if (name.endsWith('.zip')) {
+        const { chars, skipped } = await importFromPDFZip(file);
+        const all = loadAll();
+        for (const ch of chars) {
+          const id = ch.id || newId();
+          all[id]  = { ...ch, id, updatedAt: Date.now() };
+        }
+        saveAll(all);
+        setChars(loadAll());
+        const skipNote = skipped.length ? ` (${skipped.length} skipped)` : '';
+        toast2(`Restored ${chars.length} character${chars.length !== 1 ? 's' : ''} from ZIP${skipNote} ✓`, 4000);
+
+      } else {
+        const data    = JSON.parse(await file.text());
+        const id      = data.id || newId();
+        const updated = { ...loadAll(), [id]: { ...data, id, updatedAt: Date.now() } };
+        saveAll(updated);
+        setChars(updated);
+        toast2('Character imported ✓');
+      }
     } catch (e) {
       if (e.message !== 'No file') toast2('Import failed: ' + e.message);
     } finally {
@@ -126,7 +153,7 @@ export default function CharacterList({ onOpen, onStartCreate }) {
       </div>
       <div style={{ display: 'flex', gap: 10, padding: '0 16px 12px', flexWrap: 'wrap' }}>
         <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleNew}>+ Blank Sheet</button>
-        <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleImport} disabled={busy}>{busy ? 'Importing…' : '↑ Import .mage'}</button>
+        <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleImport} disabled={busy}>{busy ? 'Importing…' : '↑ Import / Restore'}</button>
         <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleExportAll}>↓ Export .mage</button>
         <button style={btnS({ fontSize: 10, color: G.teal, borderColor: `${G.teal}55` })} onClick={handleBackupZip} disabled={busy}>{busy ? 'Building…' : '↓ Backup PDF ZIP'}</button>
       </div>

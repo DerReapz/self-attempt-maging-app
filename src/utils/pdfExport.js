@@ -125,10 +125,30 @@ function buildCharacterHTML(ch) {
 // ── jsPDF renderer (used on native Android) ─────────────────────────────────
 const PAGE_W = 595, PAGE_H = 842, M = 36;
 
+function chToBase64(ch) {
+  const json  = JSON.stringify(ch);
+  const bytes = new TextEncoder().encode(json);
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+}
+
 function buildPDFDoc(ch) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const s = ch.sheet || {};
   const id = s.identity || {};
+
+  // Embed character data so this PDF can be re-imported into the app.
+  try {
+    doc.setProperties({
+      title:    `Mage: The Ascension — ${id.name || 'Character Sheet'}`,
+      subject:  'Mage: The Ascension 2nd Edition Character Sheet',
+      author:   'Mage Companion App',
+      keywords: 'MAGE_DATA:' + chToBase64(ch),
+      creator:  'Mage Companion',
+    });
+  } catch { /* non-critical */ }
+
   const colW = (PAGE_W - 2*M - 16) / 3;
   let y = M;
 
