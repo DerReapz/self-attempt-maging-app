@@ -317,27 +317,10 @@ export default function CharacterSheet({ charId, onBack }) {
           </div>
         </div>
 
-        {/* Weapons & Vehicles */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div>
-            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>WEAPONS</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 48px', gap: '0 8px', marginBottom: 4 }}>
-              <span style={{ fontFamily: 'Cinzel,serif', fontSize: 8, color: G.muted }}>NAME</span>
-              <span style={{ fontFamily: 'Cinzel,serif', fontSize: 8, color: G.muted }}>DMG</span>
-            </div>
-            {sheet.weapons.map((w, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 48px', gap: '0 8px', marginBottom: 4 }}>
-                <input value={w.name} onChange={(e) => updWep(i, 'name', e.target.value)}
-                  style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.text, fontSize: 13, outline: 'none', padding: '1px 2px', minWidth: 0 }} />
-                <input value={w.dmg} onChange={(e) => updWep(i, 'dmg', e.target.value)}
-                  style={{ background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.text, fontSize: 13, outline: 'none', padding: '1px 2px', textAlign: 'center', minWidth: 0 }} />
-              </div>
-            ))}
-          </div>
-          <div>
-            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>VEHICLES</div>
-            <Lines values={sheet.vehicles} onChange={(v) => upd('vehicles', v)} />
-          </div>
+        {/* Vehicles */}
+        <div>
+          <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>VEHICLES</div>
+          <Lines values={sheet.vehicles} onChange={(v) => upd('vehicles', v)} />
         </div>
       </div>
 
