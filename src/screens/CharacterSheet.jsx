@@ -341,50 +341,6 @@ export default function CharacterSheet({ charId, onBack }) {
         </div>
       </div>
 
-      {/* ── Haven ── */}
-      <div style={card}>
-        <Divider>Haven</Divider>
-
-        {/* Haven header row */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 20px', marginBottom: 12 }}>
-          <label style={{ display: 'flex', gap: 5, alignItems: 'center', cursor: 'pointer', fontSize: 13, color: G.textDim, flexShrink: 0 }}>
-            <input type="checkbox" checked={sheet.noHaven} onChange={(e) => upd('noHaven', e.target.checked)} style={{ accentColor: G.gold }} />
-            No Haven?
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-            <span style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.goldDim }}>RATING</span>
-            <Dots max={5} value={sheet.havenRating} onChange={(v) => upd('havenRating', v)} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, flex: '1 1 160px', minWidth: 0 }}>
-            <span style={{ fontFamily: 'Cinzel,serif', fontSize: 9, color: G.goldDim, flexShrink: 0 }}>NAME</span>
-            <input value={sheet.havenName} onChange={(e) => upd('havenName', e.target.value)}
-              style={{ flex: 1, minWidth: 0, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.text, fontSize: 13, outline: 'none', padding: '1px 2px' }} />
-          </div>
-        </div>
-
-        {/* Haven Merits & Flaws */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 12 }}>
-          <div>
-            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>HAVEN MERITS</div>
-            {sheet.havenMerits.map((r, i) => (
-              <FreeRow key={i} name={r.name} value={r.value} placeholder="Merit…"
-                onName={(v) => updFree('havenMerits', i, 'name', v)}
-                onChange={(v) => updFree('havenMerits', i, 'value', v)} />
-            ))}
-          </div>
-          <div>
-            <div style={{ fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.18em', color: G.goldDim, marginBottom: 6 }}>HAVEN FLAWS</div>
-            {sheet.havenFlaws.map((r, i) => (
-              <FreeRow key={i} name={r.name} value={r.value} placeholder="Flaw…"
-                onName={(v) => updFree('havenFlaws', i, 'name', v)}
-                onChange={(v) => updFree('havenFlaws', i, 'value', v)} />
-            ))}
-          </div>
-        </div>
-
-        <TArea label="Location"    value={sheet.havenLocation}    onChange={(v) => upd('havenLocation', v)}    rows={3} />
-        <TArea label="Description" value={sheet.havenDescription} onChange={(v) => upd('havenDescription', v)} rows={4} />
-      </div>
     </>
   );
 
