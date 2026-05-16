@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTheme, useSetTheme, THEMES, buildCustomTheme } from '../context/ThemeContext.jsx';
 import { PROVIDERS, WEB_PROVIDERS, getStoredProvider, getStoredKey, getStoredMode, storeMode, getStoredWebProvider, storeWebProvider } from '../utils/aiProvider.js';
 import ProviderBar from '../components/ProviderBar.jsx';
 import { exportCharsToJson } from '../utils/storage.js';
 import { exportAllAsPDFZip } from '../utils/backup.js';
+import {
+  NATIVE_DIRS, getNativeDir, setNativeDir,
+  supportsFileSystemAccess, getStoredDirHandle, pickBackupFolder, clearDirHandle,
+} from '../utils/backupLocation.js';
 
 const TEXT_SIZES = [
   { id: 'normal', label: 'Normal', zoom: '1'    },
@@ -139,6 +143,107 @@ function ThemeSection() {
         </div>
       )}
       <Hint>Theme takes effect immediately across the entire app.</Hint>
+    </Section>
+  );
+}
+
+function isNativePlatform() {
+  try { return window?.Capacitor?.isNativePlatform?.() === true; } catch { return false; }
+}
+
+function BackupLocationSection() {
+  const G       = useTheme();
+  const native  = isNativePlatform();
+  const hasFSA  = !native && supportsFileSystemAccess();
+
+  const [nDir,       setNDir]       = useState(() => getNativeDir());
+  const [folderName, setFolderName] = useState('');
+  const [picking,    setPicking]    = useState(false);
+
+  // Load the stored folder name for display on web
+  useEffect(() => {
+    if (!hasFSA) return;
+    getStoredDirHandle().then(h => setFolderName(h?.name || '')).catch(() => {});
+  }, [hasFSA]);
+
+  const handlePickFolder = async () => {
+    setPicking(true);
+    try {
+      const h = await pickBackupFolder();
+      setFolderName(h.name);
+    } catch (e) {
+      if (e.name !== 'AbortError') alert('Could not set folder: ' + e.message);
+    } finally {
+      setPicking(false);
+    }
+  };
+
+  const handleClear = async () => {
+    await clearDirHandle();
+    setFolderName('');
+  };
+
+  const handleNativeDir = (id) => {
+    setNDir(id);
+    setNativeDir(id);
+  };
+
+  const pill = (active) => ({
+    flex: 1, fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.1em',
+    padding: '9px 4px', borderRadius: 2, cursor: 'pointer',
+    border: `1px solid ${active ? G.gold : G.border}`,
+    background: active ? G.goldFaint : 'transparent',
+    color: active ? G.gold : G.muted,
+  });
+
+  return (
+    <Section title="Backup Location">
+      {native ? (
+        <>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {NATIVE_DIRS.map(d => (
+              <button key={d.id} onClick={() => handleNativeDir(d.id)} style={pill(nDir === d.id)}>
+                {d.label}
+              </button>
+            ))}
+          </div>
+          <Hint>{NATIVE_DIRS.find(d => d.id === nDir)?.hint}</Hint>
+        </>
+      ) : hasFSA ? (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+            <div style={{
+              flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 2,
+              border: `1px solid ${G.border}`, fontSize: 13, color: folderName ? G.text : G.muted,
+              fontStyle: folderName ? 'normal' : 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {folderName || 'Browser default downloads folder'}
+            </div>
+            <button onClick={handlePickFolder} disabled={picking} style={{
+              fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.1em',
+              padding: '8px 14px', borderRadius: 2, cursor: 'pointer', flexShrink: 0,
+              border: `1px solid ${G.gold}`, background: 'transparent', color: G.gold,
+            }}>
+              {picking ? '…' : folderName ? 'Change' : 'Choose Folder'}
+            </button>
+            {folderName && (
+              <button onClick={handleClear} style={{
+                fontFamily: 'Cinzel,serif', fontSize: 10, padding: '8px 12px', borderRadius: 2,
+                cursor: 'pointer', border: `1px solid ${G.red}44`, background: 'transparent', color: G.red, flexShrink: 0,
+              }}>✕</button>
+            )}
+          </div>
+          <Hint>
+            {folderName
+              ? `Backups will be saved directly to "${folderName}".`
+              : 'Choose a folder to save backups there automatically. Otherwise files go to your browser\'s default downloads folder.'}
+          </Hint>
+        </>
+      ) : (
+        <Hint>
+          Backup files are saved to your browser's default downloads folder. To change it, update the download location in your browser settings.
+        </Hint>
+      )}
     </Section>
   );
 }
@@ -304,6 +409,8 @@ export default function SettingsScreen() {
           </div>
           <Hint>Scales all content including icons. Takes effect immediately.</Hint>
         </Section>
+
+        <BackupLocationSection />
 
         <Section title="Character Data">
           <ActionBtn color={G.teal} onClick={handleBackupZip}>{backupBusy ? 'Building…' : '↓ Backup All — PDF ZIP'}</ActionBtn>
