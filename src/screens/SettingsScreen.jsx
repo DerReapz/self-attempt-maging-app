@@ -10,6 +10,7 @@ import {
 } from '../utils/backupLocation.js';
 import { CLOUD_PROVIDERS, } from '../utils/cloudBackup.js';
 import { getCloudConfig, setCloudConfig, runCloudBackup } from '../utils/autoBackup.js';
+import DMSyncSection from './DMSyncSection.jsx';
 
 const TEXT_SIZES = [
   { id: 'normal', label: 'Normal', zoom: '1'    },
@@ -565,6 +566,8 @@ export default function SettingsScreen() {
           </div>
           <Hint>Scales all content including icons. Takes effect immediately.</Hint>
         </Section>
+
+        <DMSyncSection />
 
         <CloudBackupSection />
 

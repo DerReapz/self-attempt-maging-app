@@ -5,8 +5,19 @@ export const loadAll = () => {
   catch { return {}; }
 };
 
+// Subscribers are notified every time saveAll runs. Used by dmSync to push
+// linked characters to Supabase without coupling the editor to network code.
+const subscribers = new Set();
+export const subscribe = (fn) => {
+  subscribers.add(fn);
+  return () => subscribers.delete(fn);
+};
+
 export const saveAll = (data) => {
   localStorage.setItem(LS_KEY, JSON.stringify(data));
+  for (const fn of subscribers) {
+    try { fn(data); } catch { /* swallow — sync must not break saves */ }
+  }
 };
 
 export const newId = () =>
