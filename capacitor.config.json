@@ -8,6 +8,9 @@
   "plugins": {
     "Filesystem": {
       "iosScheme": "ionic"
+    },
+    "CapacitorUpdater": {
+      "autoUpdate": true
     }
   }
 }
