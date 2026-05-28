@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTheme, useSetTheme, THEMES, buildCustomTheme } from '../context/ThemeContext.jsx';
 import { PROVIDERS, WEB_PROVIDERS, getStoredProvider, getStoredKey, getStoredMode, storeMode, getStoredWebProvider, storeWebProvider } from '../utils/aiProvider.js';
 import ProviderBar from '../components/ProviderBar.jsx';
-import { exportCharsToJson } from '../utils/storage.js';
+import { exportCharsToJson, clearAll } from '../utils/storage.js';
 
 const TEXT_SIZES = [
   { id: 'normal', label: 'Normal', zoom: '1'    },
@@ -175,7 +175,7 @@ export default function SettingsScreen() {
 
   const handleClearChars = () => {
     if (!window.confirm('Delete ALL characters? This cannot be undone.')) return;
-    localStorage.removeItem('mage_characters');
+    clearAll();
     showToast('All characters deleted.');
   };
 

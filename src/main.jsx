@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
+import { restoreFromBackupIfEmpty } from './utils/storage.js';
 
 CapacitorUpdater.notifyAppReady();
 
@@ -27,10 +28,12 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>
-  </React.StrictMode>
-);
+restoreFromBackupIfEmpty().then(() => {
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </React.StrictMode>
+  );
+});
