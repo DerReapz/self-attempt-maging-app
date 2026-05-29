@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
 import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { restoreFromBackupIfEmpty } from './utils/storage.js';
 
@@ -32,7 +33,9 @@ restoreFromBackupIfEmpty().then(() => {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
       <ThemeProvider>
-        <App />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </ThemeProvider>
     </React.StrictMode>
   );

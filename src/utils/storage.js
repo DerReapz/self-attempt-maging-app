@@ -18,10 +18,14 @@ async function writeBackup(json) {
   } catch { /* non-fatal on web */ }
 }
 
+let _syncCallback = null;
+export const setSyncCallback = (fn) => { _syncCallback = fn; };
+
 export const saveAll = (data) => {
   const json = JSON.stringify(data);
   localStorage.setItem(LS_KEY, json);
-  writeBackup(json); // mirror to Documents — survives APK reinstall
+  writeBackup(json);
+  if (_syncCallback) _syncCallback(data);
 };
 
 // Call this before rendering. If localStorage is empty (fresh install/reinstall),

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTheme, useSetTheme, THEMES, buildCustomTheme } from '../context/ThemeContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { PROVIDERS, WEB_PROVIDERS, getStoredProvider, getStoredKey, getStoredMode, storeMode, getStoredWebProvider, storeWebProvider } from '../utils/aiProvider.js';
 import ProviderBar from '../components/ProviderBar.jsx';
 import { exportCharsToJson, clearAll } from '../utils/storage.js';
@@ -142,8 +143,17 @@ function ThemeSection() {
   );
 }
 
+const SYNC_LABEL = { idle: '—', syncing: 'Syncing…', synced: 'Synced ✓', error: 'Sync error' };
+const SYNC_COLOR = { idle: null, syncing: null, synced: null, error: null };
+
 export default function SettingsScreen() {
   const G = useTheme();
+  SYNC_COLOR.idle    = G.muted;
+  SYNC_COLOR.syncing = G.gold;
+  SYNC_COLOR.synced  = G.teal;
+  SYNC_COLOR.error   = G.red;
+
+  const { user, syncStatus, logout, showLogin } = useAuth();
   const [provider, setProvider] = useState(() => getStoredProvider());
   const [aiMode,    setAiMode]    = useState(() => getStoredMode());
   const [webProv,   setWebProv]   = useState(() => getStoredWebProvider());
@@ -189,6 +199,28 @@ export default function SettingsScreen() {
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px 16px 110px', minHeight: 0 }}>
+
+        <Section title="Cloud Account">
+          {user ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <div>
+                  <div style={{ fontSize: 13, color: G.text, marginBottom: 3 }}>{user.email}</div>
+                  <div style={{ fontSize: 11, color: SYNC_COLOR[syncStatus], fontFamily: 'Cinzel,serif', letterSpacing: '.06em' }}>
+                    {SYNC_LABEL[syncStatus]}
+                  </div>
+                </div>
+              </div>
+              <ActionBtn color={G.muted} onClick={logout}>Sign Out</ActionBtn>
+              <Hint>Characters auto-sync to your account after every change.</Hint>
+            </>
+          ) : (
+            <>
+              <ActionBtn color={G.gold} onClick={showLogin}>Sign In / Create Account</ActionBtn>
+              <Hint>Sign in to back up characters to the cloud and restore them after reinstalls.</Hint>
+            </>
+          )}
+        </Section>
 
         <Section title="AI Query Mode">
           {/* Mode toggle */}
