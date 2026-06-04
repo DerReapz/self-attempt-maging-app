@@ -19,7 +19,7 @@ export default function AuthScreen() {
       if (mode === 'login') await login(email, pass);
       else                   await register(email, pass);
     } catch (err) {
-      setError(friendlyError(err.code));
+      setError(err.message || 'Something went wrong. Please try again.');
       setLoading(false);
     }
   };
@@ -129,16 +129,3 @@ export default function AuthScreen() {
   );
 }
 
-function friendlyError(code) {
-  switch (code) {
-    case 'auth/invalid-email':          return 'Invalid email address.';
-    case 'auth/user-not-found':
-    case 'auth/wrong-password':
-    case 'auth/invalid-credential':     return 'Incorrect email or password.';
-    case 'auth/email-already-in-use':   return 'An account with this email already exists.';
-    case 'auth/weak-password':          return 'Password must be at least 6 characters.';
-    case 'auth/too-many-requests':      return 'Too many attempts. Try again later.';
-    case 'auth/network-request-failed': return 'No network connection.';
-    default:                            return 'Something went wrong. Please try again.';
-  }
-}

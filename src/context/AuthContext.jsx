@@ -1,52 +1,88 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-} from 'firebase/auth';
-import { auth } from '../utils/firebase.js';
+import { supabase } from '../utils/supabase.js';
 import { loadAll, saveAll, setSyncCallback } from '../utils/storage.js';
-import { syncOnLogin, debouncedUpload } from '../utils/cloudSync.js';
+import { fetchFromVault, debouncedSync } from '../utils/vaultSync.js';
 
 const AuthCtx = createContext(null);
 export const useAuth = () => useContext(AuthCtx);
 
 export function AuthProvider({ children }) {
-  // undefined = still loading, null = signed out, object = signed in
-  const [user,       setUser]       = useState(auth ? undefined : null);
-  const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | synced | error
+  // undefined = resolving session, null = signed out, object = signed in
+  const [user,       setUser]       = useState(supabase ? undefined : null);
+  const [syncStatus, setSyncStatus] = useState('idle');
   const [skipped,    setSkipped]    = useState(() => !!localStorage.getItem('mage_auth_skipped'));
 
   useEffect(() => {
-    if (!auth) return; // Firebase not configured — stay in offline mode
+    if (!supabase) return;
 
-    return onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        setSyncStatus('syncing');
-        try {
-          await syncOnLogin(u.uid, loadAll, saveAll);
-          setSyncStatus('synced');
-        } catch {
-          setSyncStatus('error');
-        }
-        setSyncCallback((data) => debouncedUpload(u.uid, data));
-      } else {
+    // Resolve existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) handleSignIn(session.user);
+      else setUser(null);
+    });
+
+    // React to subsequent auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        handleSignIn(session.user);
+      } else if (event === 'SIGNED_OUT') {
         setSyncCallback(null);
         setSyncStatus('idle');
+        setUser(null);
       }
-      setUser(u);
     });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = (email, password) =>
-    signInWithEmailAndPassword(auth, email, password);
+  const handleSignIn = async (u) => {
+    setSyncStatus('syncing');
+    try {
+      await syncOnLogin(u.id);
+      setSyncStatus('synced');
+    } catch {
+      setSyncStatus('error');
+    }
+    setSyncCallback((data) => debouncedSync(u.id, data));
+    // Upload merged state so cloud reflects any local-only characters
+    debouncedSync(u.id, loadAll(), 1000);
+    setUser(u);
+  };
 
-  const register = (email, password) =>
-    createUserWithEmailAndPassword(auth, email, password);
+  const syncOnLogin = async (uid) => {
+    const local = loadAll();
+    const rows  = await fetchFromVault(uid);
+
+    if (!rows.length) {
+      // First login — push local characters up
+      debouncedSync(uid, local, 0);
+      return;
+    }
+
+    // Merge: cloud row wins if its updated_at is newer than the local copy
+    const merged = { ...local };
+    for (const row of rows) {
+      const serverTs  = new Date(row.updated_at).getTime();
+      const localChar = local[row.local_id];
+      if (!localChar || serverTs > (localChar.updatedAt || 0)) {
+        merged[row.local_id] = { ...row.sheet, id: row.local_id };
+      }
+    }
+    saveAll(merged);
+  };
+
+  const login = async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  };
+
+  const register = async (email, password) => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+  };
 
   const logout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     localStorage.removeItem('mage_auth_skipped');
     setSkipped(false);
   };
