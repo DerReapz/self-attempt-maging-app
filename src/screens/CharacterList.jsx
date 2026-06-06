@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { Toast } from '../components/SharedUI.jsx';
-import { loadAll, saveAll, newId, exportCharsToJson } from '../utils/storage.js';
+import { loadAll, saveAll, newId, exportCharsToJson, subscribe } from '../utils/storage.js';
 import { exportCharAsPDF } from '../utils/pdfExport.js';
 import { exportAllAsPDFZip, importFromPDF, importFromPDFZip } from '../utils/backup.js';
 
@@ -12,6 +12,8 @@ export default function CharacterList({ onOpen, onStartCreate }) {
   const [chars, setChars] = useState(loadAll);
   const [toast, setToast] = useState('');
   const [busy,  setBusy]  = useState(false);
+
+  useEffect(() => subscribe((next) => setChars(next)), []);
 
   const toast2 = (msg, ms = 2500) => {
     setToast(msg);

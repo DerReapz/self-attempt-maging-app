@@ -6,6 +6,7 @@ import {
   listMySessions, joinSession, leaveSession,
   getLinks, setLink, clearLink, pushBoundCharacter,
 } from '../lib/dmSync.js';
+import { pullVaultNow, subscribeVaultStatus } from '../lib/vault.js';
 import { loadAll } from '../utils/storage.js';
 
 function Hint({ children }) {
@@ -171,6 +172,8 @@ export default function DMSyncSection() {
         }}>Sign out</button>
       </div>
 
+      <VaultStatusCard />
+
       <Field label="Join a chronicle (invite code)">
         <div style={{ display: 'flex', gap: 8 }}>
           <input
@@ -245,6 +248,62 @@ export default function DMSyncSection() {
         Unbind by selecting "None".
       </Hint>
     </Section>
+  );
+}
+
+function VaultStatusCard() {
+  const G = useTheme();
+  const [status, setStatus] = useState('idle');
+  const [busy,   setBusy]   = useState(false);
+  useEffect(() => subscribeVaultStatus(setStatus), []);
+
+  const label =
+    status === 'pulling' ? 'Pulling from cloud…' :
+    status === 'pushing' ? 'Pushing changes…' :
+    status === 'error'   ? 'Sync error — see console' :
+    status === 'offline' ? 'Cloud not configured' :
+    status === 'unauth'  ? 'Sign in to sync' :
+                           'Auto-sync on — characters saved to your account';
+
+  const color =
+    status === 'error'                                   ? G.red  :
+    status === 'pulling' || status === 'pushing'         ? G.teal :
+                                                           G.goldDim;
+
+  const pull = async () => {
+    if (busy) return;
+    setBusy(true);
+    try { await pullVaultNow(); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{
+      background: G.card, border: `1px solid ${G.border}`,
+      borderRadius: 3, padding: '10px 12px', marginBottom: 12,
+      display: 'flex', alignItems: 'center', gap: 10,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.22em',
+          color: G.goldDim, textTransform: 'uppercase', marginBottom: 2,
+        }}>Character vault</div>
+        <div style={{ fontSize: 12, color }}>{label}</div>
+      </div>
+      <button
+        onClick={pull}
+        disabled={busy || status === 'offline' || status === 'unauth'}
+        style={{
+          fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
+          border: `1px solid ${G.gold}55`, borderRadius: 2,
+          background: 'transparent', color: G.goldDim,
+          padding: '6px 10px', cursor: busy ? 'default' : 'pointer',
+          opacity: busy ? 0.5 : 1,
+        }}
+      >
+        {busy ? '…' : '↓ PULL'}
+      </button>
+    </div>
   );
 }
 
