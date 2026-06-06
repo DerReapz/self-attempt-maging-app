@@ -4,7 +4,7 @@ import { Toast } from '../components/SharedUI.jsx';
 import { loadAll, saveAll, newId, exportCharsToJson, subscribe } from '../utils/storage.js';
 import { exportCharAsPDF } from '../utils/pdfExport.js';
 import { exportAllAsPDFZip, importFromPDF, importFromPDFZip } from '../utils/backup.js';
-import { pullVaultNow, subscribeVaultStatus } from '../lib/vault.js';
+import { pullVaultNow, pushAllVault, subscribeVaultStatus } from '../lib/vault.js';
 import { getUser } from '../lib/dmSync.js';
 
 export default function CharacterList({ onOpen, onStartCreate }) {
@@ -163,6 +163,22 @@ export default function CharacterList({ onOpen, onStartCreate }) {
     }
   };
 
+  const handleBackup = async () => {
+    if (busy) return;
+    setBusy(true);
+    toast2('Backing up to cloud…', 60000);
+    try {
+      const r = await pushAllVault();
+      if (r.error) toast2(`Backup failed: ${r.error}`, 6000);
+      else if (r.pushed === 0) toast2('No characters to back up', 2500);
+      else toast2(`Backed up ${r.pushed} character${r.pushed === 1 ? '' : 's'} ✓`, 3000);
+    } catch (e) {
+      toast2('Backup failed: ' + (e?.message || String(e)), 6000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const sorted = Object.values(chars).sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
@@ -209,6 +225,16 @@ export default function CharacterList({ onOpen, onStartCreate }) {
             })}
           >
             {vaultStatus === 'pulling' ? 'Pulling…' : vaultStatus === 'error' ? '⚠ Retry Cloud Pull' : '↻ Restore from Cloud'}
+          </button>
+        )}
+        {signedIn && (
+          <button
+            onClick={handleBackup}
+            disabled={busy || vaultStatus === 'pulling' || vaultStatus === 'pushing'}
+            title="Force-push every local character up to your account vault"
+            style={btnS({ fontSize: 10, color: G.teal, borderColor: `${G.teal}66` })}
+          >
+            {vaultStatus === 'pushing' ? 'Backing up…' : '↑ Backup to Cloud'}
           </button>
         )}
       </div>

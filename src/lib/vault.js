@@ -177,6 +177,40 @@ export async function pullVaultNow() {
   }
 }
 
+// Force-push every local character to the cloud. Bypasses the debounced
+// diff queue — used by the "Backup to Cloud" button so the user gets an
+// unambiguous "yes everything is up there" round-trip on demand.
+export async function pushAllVault() {
+  if (!userId) return { pushed: 0, error: 'Not signed in' };
+  const chars = loadAll();
+  const entries = Object.entries(chars);
+  if (entries.length === 0) {
+    setStatus('idle');
+    return { pushed: 0, error: null };
+  }
+  setStatus('pushing');
+  let pushed = 0;
+  try {
+    for (const [id, ch] of entries) {
+      const { error } = await supabase
+        .from('player_characters')
+        .upsert(liveRow(userId, id, ch), { onConflict: 'player_id,char_id' });
+      if (error) throw error;
+      pushed++;
+    }
+    snapshot = chars;
+    pending.clear();
+    clearTimeout(pushTimer);
+    setStatus('idle');
+    return { pushed, error: null };
+  } catch (e) {
+    const msg = e?.message || String(e);
+    console.warn('[vault] backup failed', msg);
+    setStatus('error', `Backup: ${msg}`);
+    return { pushed, error: msg };
+  }
+}
+
 function applyRemoteRow(row) {
   if (!row) return;
   const next = { ...loadAll() };
