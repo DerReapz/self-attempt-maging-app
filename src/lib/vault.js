@@ -125,7 +125,7 @@ function mergeRowInto(next, row) {
 }
 
 export async function pullVaultNow() {
-  if (!userId) return;
+  if (!userId) return { added: 0, updated: 0, deleted: 0, error: 'Not signed in' };
   setStatus('pulling');
   try {
     const { data, error } = await supabase
@@ -134,11 +134,25 @@ export async function pullVaultNow() {
       .eq('player_id', userId);
     if (error) throw error;
 
-    const next = { ...loadAll() };
+    const before = loadAll();
+    const next   = { ...before };
     const remoteIds = new Set();
+    let added = 0, updated = 0, deleted = 0;
+
     for (const row of (data || [])) {
       remoteIds.add(row.char_id);
+      const hadLocal = !!next[row.char_id];
+      const localJson = hadLocal ? JSON.stringify(next[row.char_id]) : null;
       mergeRowInto(next, row);
+      const hasLocal = !!next[row.char_id];
+
+      if (row.deleted_at) {
+        if (hadLocal && !hasLocal) deleted++;
+      } else if (!hadLocal && hasLocal) {
+        added++;
+      } else if (hadLocal && hasLocal && JSON.stringify(next[row.char_id]) !== localJson) {
+        updated++;
+      }
     }
 
     applyingRemote = true;
@@ -150,9 +164,12 @@ export async function pullVaultNow() {
     }
     if (pending.size) scheduleFlush();
     setStatus('idle');
+    return { added, updated, deleted, error: null };
   } catch (e) {
-    console.warn('[vault] pull failed', e?.message || e);
+    const msg = e?.message || String(e);
+    console.warn('[vault] pull failed', msg);
     setStatus('error');
+    return { added: 0, updated: 0, deleted: 0, error: msg };
   }
 }
 
