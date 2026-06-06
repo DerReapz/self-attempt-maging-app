@@ -253,14 +253,20 @@ export default function DMSyncSection() {
 
 function VaultStatusCard() {
   const G = useTheme();
-  const [status, setStatus] = useState('idle');
-  const [busy,   setBusy]   = useState(false);
-  useEffect(() => subscribeVaultStatus(setStatus), []);
+  const [status,    setStatus]    = useState('idle');
+  const [lastError, setLastError] = useState('');
+  const [busy,      setBusy]      = useState(false);
+  useEffect(() => subscribeVaultStatus((s, err) => { setStatus(s); setLastError(err || ''); }), []);
+
+  const isMissingTable =
+    lastError && /relation .*player_characters.* does not exist/i.test(lastError);
 
   const label =
     status === 'pulling' ? 'Pulling from cloud…' :
     status === 'pushing' ? 'Pushing changes…' :
-    status === 'error'   ? 'Sync error — see console' :
+    status === 'error'   ? (isMissingTable
+                              ? 'Vault table missing — apply migration 005_player_vault.sql'
+                              : 'Sync error') :
     status === 'offline' ? 'Cloud not configured' :
     status === 'unauth'  ? 'Sign in to sync' :
                            'Auto-sync on — characters saved to your account';
@@ -281,28 +287,39 @@ function VaultStatusCard() {
     <div style={{
       background: G.card, border: `1px solid ${G.border}`,
       borderRadius: 3, padding: '10px 12px', marginBottom: 12,
-      display: 'flex', alignItems: 'center', gap: 10,
     }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.22em',
-          color: G.goldDim, textTransform: 'uppercase', marginBottom: 2,
-        }}>Character vault</div>
-        <div style={{ fontSize: 12, color }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.22em',
+            color: G.goldDim, textTransform: 'uppercase', marginBottom: 2,
+          }}>Character vault</div>
+          <div style={{ fontSize: 12, color }}>{label}</div>
+        </div>
+        <button
+          onClick={pull}
+          disabled={busy || status === 'offline' || status === 'unauth'}
+          style={{
+            fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
+            border: `1px solid ${G.gold}55`, borderRadius: 2,
+            background: 'transparent', color: G.goldDim,
+            padding: '6px 10px', cursor: busy ? 'default' : 'pointer',
+            opacity: busy ? 0.5 : 1,
+          }}
+        >
+          {busy ? '…' : '↓ PULL'}
+        </button>
       </div>
-      <button
-        onClick={pull}
-        disabled={busy || status === 'offline' || status === 'unauth'}
-        style={{
-          fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
-          border: `1px solid ${G.gold}55`, borderRadius: 2,
-          background: 'transparent', color: G.goldDim,
-          padding: '6px 10px', cursor: busy ? 'default' : 'pointer',
-          opacity: busy ? 0.5 : 1,
-        }}
-      >
-        {busy ? '…' : '↓ PULL'}
-      </button>
+      {status === 'error' && lastError && (
+        <div style={{
+          marginTop: 8, padding: '6px 8px',
+          background: `${G.red}15`, border: `1px solid ${G.red}55`, borderRadius: 2,
+          fontFamily: 'EB Garamond,serif', fontSize: 11, color: G.red,
+          wordBreak: 'break-word',
+        }}>
+          {lastError}
+        </div>
+      )}
     </div>
   );
 }
