@@ -3,6 +3,7 @@ import { useTheme } from './context/ThemeContext.jsx';
 import { applyTextSize } from './screens/SettingsScreen.jsx';
 import { startAutoBackupScheduler, stopAutoBackupScheduler } from './utils/autoBackup.js';
 import { startAutoSync } from './lib/dmSync.js';
+import { startVaultAutoSync } from './lib/vault.js';
 import CharacterList    from './screens/CharacterList.jsx';
 import CharacterSheet   from './screens/CharacterSheet.jsx';
 import CharacterCreator from './screens/CharacterCreator.jsx';
@@ -78,6 +79,7 @@ export default function App() {
   useEffect(() => {
     startAutoBackupScheduler();
     startAutoSync();
+    startVaultAutoSync();
     return () => stopAutoBackupScheduler();
   }, []);
   const [openCharId,   setOpenCharId]   = useState(null);
