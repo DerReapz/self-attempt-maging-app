@@ -120,6 +120,46 @@ export async function pushBoundCharacter(sessionId) {
   await pushOne(sessionId, ch);
 }
 
+// ── Shared story log ──────────────────────────────────────────────────────
+// One row per session in public.story_log; DM + every member can read/write.
+// Last-write-wins; clients subscribe to postgres_changes for live updates.
+
+export async function fetchStoryLog(sessionId) {
+  if (!isConfigured()) return null;
+  const { data, error } = await supabase
+    .from('story_log')
+    .select('content, updated_at, updated_by')
+    .eq('session_id', sessionId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function saveStoryLog(sessionId, content) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+  const { error } = await supabase
+    .from('story_log')
+    .upsert(
+      { session_id: sessionId, content, updated_by: user.id, updated_at: new Date().toISOString() },
+      { onConflict: 'session_id' },
+    );
+  if (error) throw error;
+}
+
+export function subscribeStoryLog(sessionId, onChange) {
+  if (!isConfigured()) return () => {};
+  const ch = supabase
+    .channel(`story-log-${sessionId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'story_log', filter: `session_id=eq.${sessionId}` },
+      (payload) => onChange(payload.new || payload.old || null),
+    )
+    .subscribe();
+  return () => { supabase.removeChannel(ch); };
+}
+
 // ── Auto-sync on save ─────────────────────────────────────────────────────
 
 let debounceTimer = null;
