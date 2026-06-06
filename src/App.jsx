@@ -10,6 +10,7 @@ import SphereReference  from './screens/SphereReference.jsx';
 import SpellsRituals    from './screens/SpellsRituals.jsx';
 import OracleScreen     from './screens/OracleScreen.jsx';
 import CassandraScreen  from './screens/CassandraScreen.jsx';
+import StoryScreen      from './screens/StoryScreen.jsx';
 import SettingsScreen   from './screens/SettingsScreen.jsx';
 
 // Apply stored text size immediately on load
@@ -21,6 +22,7 @@ const TABS = [
   { id: 'spheres',   label: 'Spheres',    icon: '⬡' },
   { id: 'oracle',    label: 'Oracle',     icon: '⚗' },
   { id: 'cassandra', label: 'Cassandra',  icon: '⚜' },
+  { id: 'story',     label: 'Chronicle',  icon: '✒' },
   { id: 'settings',  label: 'Settings',   icon: '⚙' },
 ];
 
@@ -121,6 +123,9 @@ export default function App() {
         </div>
         <div style={{ position: 'absolute', inset: 0, display: activeTab === 'cassandra' ? 'flex' : 'none', flexDirection: 'column' }}>
           <CassandraScreen />
+        </div>
+        <div style={{ position: 'absolute', inset: 0, display: activeTab === 'story'     ? 'flex' : 'none', flexDirection: 'column' }}>
+          <StoryScreen />
         </div>
         <div style={{ position: 'absolute', inset: 0, display: activeTab === 'settings'  ? 'flex' : 'none', flexDirection: 'column' }}>
           <SettingsScreen />
