@@ -20,18 +20,21 @@ let userId         = null;
 let started        = false;
 let applyingRemote = false;              // suppress push handler during merges
 
-const status     = { current: 'offline' };
+const status     = { current: 'offline', lastError: '' };
 const listeners  = new Set();
 
-const setStatus = (s) => {
+const setStatus = (s, lastError) => {
   status.current = s;
-  for (const fn of listeners) { try { fn(s); } catch { /* ignore */ } }
+  if (lastError !== undefined) status.lastError = lastError;
+  if (s !== 'error') status.lastError = '';
+  for (const fn of listeners) { try { fn(status.current, status.lastError); } catch { /* ignore */ } }
 };
 
-export const getVaultStatus = () => status.current;
+export const getVaultStatus    = () => status.current;
+export const getVaultLastError = () => status.lastError;
 export const subscribeVaultStatus = (fn) => {
   listeners.add(fn);
-  try { fn(status.current); } catch { /* ignore */ }
+  try { fn(status.current, status.lastError); } catch { /* ignore */ }
   return () => listeners.delete(fn);
 };
 
@@ -82,8 +85,9 @@ async function pushBatch() {
     }
     setStatus('idle');
   } catch (e) {
-    console.warn('[vault] push failed', e?.message || e);
-    setStatus('error');
+    const msg = e?.message || String(e);
+    console.warn('[vault] push failed', msg);
+    setStatus('error', `Push: ${msg}`);
   }
 }
 
@@ -168,8 +172,42 @@ export async function pullVaultNow() {
   } catch (e) {
     const msg = e?.message || String(e);
     console.warn('[vault] pull failed', msg);
-    setStatus('error');
+    setStatus('error', `Pull: ${msg}`);
     return { added: 0, updated: 0, deleted: 0, error: msg };
+  }
+}
+
+// Force-push every local character to the cloud. Bypasses the debounced
+// diff queue — used by the "Backup to Cloud" button so the user gets an
+// unambiguous "yes everything is up there" round-trip on demand.
+export async function pushAllVault() {
+  if (!userId) return { pushed: 0, error: 'Not signed in' };
+  const chars = loadAll();
+  const entries = Object.entries(chars);
+  if (entries.length === 0) {
+    setStatus('idle');
+    return { pushed: 0, error: null };
+  }
+  setStatus('pushing');
+  let pushed = 0;
+  try {
+    for (const [id, ch] of entries) {
+      const { error } = await supabase
+        .from('player_characters')
+        .upsert(liveRow(userId, id, ch), { onConflict: 'player_id,char_id' });
+      if (error) throw error;
+      pushed++;
+    }
+    snapshot = chars;
+    pending.clear();
+    clearTimeout(pushTimer);
+    setStatus('idle');
+    return { pushed, error: null };
+  } catch (e) {
+    const msg = e?.message || String(e);
+    console.warn('[vault] backup failed', msg);
+    setStatus('error', `Backup: ${msg}`);
+    return { pushed, error: msg };
   }
 }
 
