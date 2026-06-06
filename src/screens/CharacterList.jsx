@@ -4,16 +4,35 @@ import { Toast } from '../components/SharedUI.jsx';
 import { loadAll, saveAll, newId, exportCharsToJson, subscribe } from '../utils/storage.js';
 import { exportCharAsPDF } from '../utils/pdfExport.js';
 import { exportAllAsPDFZip, importFromPDF, importFromPDFZip } from '../utils/backup.js';
+import { pullVaultNow, subscribeVaultStatus } from '../lib/vault.js';
+import { getUser } from '../lib/dmSync.js';
 
 export default function CharacterList({ onOpen, onStartCreate }) {
   const G = useTheme();
   const card = { background: G.card, border: `1px solid ${G.border}`, borderRadius: 3, padding: '12px 14px', marginBottom: 12 };
   const btnS = (extra = {}) => ({ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: '.15em', border: `1px solid ${G.gold}`, borderRadius: 3, background: 'transparent', color: G.gold, padding: '9px 18px', cursor: 'pointer', ...extra });
-  const [chars, setChars] = useState(loadAll);
-  const [toast, setToast] = useState('');
-  const [busy,  setBusy]  = useState(false);
+  const [chars,       setChars]       = useState(loadAll);
+  const [toast,       setToast]       = useState('');
+  const [busy,        setBusy]        = useState(false);
+  const [vaultStatus, setVaultStatus] = useState('offline');
+  const [signedIn,    setSignedIn]    = useState(false);
+  const lastStatusRef                 = useRef('offline');
 
   useEffect(() => subscribe((next) => setChars(next)), []);
+
+  useEffect(() => subscribeVaultStatus((s) => {
+    // When the auto-pull on sign-in finishes, surface a toast so the user
+    // knows the cloud round-trip happened (or failed visibly).
+    if (lastStatusRef.current === 'pulling' && s === 'idle') {
+      toast2('Cloud sync up to date ✓', 2500);
+    } else if (lastStatusRef.current === 'pulling' && s === 'error') {
+      toast2('Cloud pull failed — open Settings → DM Sync for details', 5000);
+    }
+    lastStatusRef.current = s;
+    setVaultStatus(s);
+  }), []);
+
+  useEffect(() => { getUser().then((u) => setSignedIn(!!u)).catch(() => setSignedIn(false)); }, [vaultStatus]);
 
   const toast2 = (msg, ms = 2500) => {
     setToast(msg);
@@ -124,6 +143,26 @@ export default function CharacterList({ onOpen, onStartCreate }) {
 
   const refreshChars = () => setChars(loadAll());
 
+  const handleRestore = async () => {
+    if (busy) return;
+    setBusy(true);
+    toast2('Pulling from cloud…', 60000);
+    try {
+      const r = await pullVaultNow();
+      if (r.error) {
+        toast2(`Cloud pull failed: ${r.error}`, 6000);
+        return;
+      }
+      const n = r.added + r.updated + r.deleted;
+      if (n === 0) toast2('Already in sync with cloud ✓', 2500);
+      else         toast2(`Restored from cloud: +${r.added}, ↻${r.updated}, −${r.deleted}`, 4000);
+    } catch (e) {
+      toast2('Cloud pull failed: ' + (e?.message || String(e)), 6000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const sorted = Object.values(chars).sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
@@ -158,6 +197,20 @@ export default function CharacterList({ onOpen, onStartCreate }) {
         <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleImport} disabled={busy}>{busy ? 'Importing…' : '↑ Import / Restore'}</button>
         <button style={btnS({ fontSize: 10, color: G.goldDim, borderColor: `${G.gold}55` })} onClick={handleExportAll}>↓ Export .mage</button>
         <button style={btnS({ fontSize: 10, color: G.teal, borderColor: `${G.teal}55` })} onClick={handleBackupZip} disabled={busy}>{busy ? 'Building…' : '↓ Backup PDF ZIP'}</button>
+        {signedIn && (
+          <button
+            onClick={handleRestore}
+            disabled={busy || vaultStatus === 'pulling'}
+            title="Pull characters bound to your account from Supabase"
+            style={btnS({
+              fontSize: 10,
+              color: vaultStatus === 'error' ? G.red : G.blue,
+              borderColor: vaultStatus === 'error' ? `${G.red}88` : `${G.blue}66`,
+            })}
+          >
+            {vaultStatus === 'pulling' ? 'Pulling…' : vaultStatus === 'error' ? '⚠ Retry Cloud Pull' : '↻ Restore from Cloud'}
+          </button>
+        )}
       </div>
 
       <div style={{ padding: '0 16px 100px', maxWidth: 620, margin: '0 auto' }}>
