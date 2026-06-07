@@ -160,6 +160,79 @@ export function subscribeStoryLog(sessionId, onChange) {
   return () => { supabase.removeChannel(ch); };
 }
 
+// ── Chronicle chapters (story_pages) ──────────────────────────────────────
+// Multiple named pages per session. Editing different chapters never
+// collides; each row syncs independently via realtime.
+
+export async function fetchStoryPages(sessionId) {
+  if (!isConfigured()) return [];
+  const { data, error } = await supabase
+    .from('story_pages')
+    .select('id, title, content, position, created_by, created_at, updated_at')
+    .eq('session_id', sessionId)
+    .order('position', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function createStoryPage(sessionId, title, position = 0) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+  const { data, error } = await supabase
+    .from('story_pages')
+    .insert({
+      session_id: sessionId,
+      title: title || 'New Chapter',
+      content: '',
+      position,
+      created_by: user.id,
+      updated_by: user.id,
+    })
+    .select('id, title, content, position, created_by, created_at, updated_at')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateStoryPageContent(pageId, content) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+  const { error } = await supabase
+    .from('story_pages')
+    .update({ content, updated_by: user.id })
+    .eq('id', pageId);
+  if (error) throw error;
+}
+
+export async function updateStoryPageTitle(pageId, title) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+  const { error } = await supabase
+    .from('story_pages')
+    .update({ title, updated_by: user.id })
+    .eq('id', pageId);
+  if (error) throw error;
+}
+
+export async function deleteStoryPage(pageId) {
+  const { error } = await supabase.from('story_pages').delete().eq('id', pageId);
+  if (error) throw error;
+}
+
+export function subscribeStoryPages(sessionId, onChange) {
+  if (!isConfigured()) return () => {};
+  const ch = supabase
+    .channel(`story-pages-${sessionId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'story_pages', filter: `session_id=eq.${sessionId}` },
+      (payload) => onChange(payload),
+    )
+    .subscribe();
+  return () => { supabase.removeChannel(ch); };
+}
+
 // ── Auto-sync on save ─────────────────────────────────────────────────────
 
 let debounceTimer = null;
