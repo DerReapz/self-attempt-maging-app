@@ -253,14 +253,16 @@ export default function DMSyncSection() {
 
 function VaultStatusCard() {
   const G = useTheme();
-  const [status,     setStatus]     = useState('idle');
-  const [lastError,  setLastError]  = useState('');
-  const [cloudCount, setCloudCount] = useState(null);
-  const [busy,       setBusy]       = useState(false);
-  useEffect(() => subscribeVaultStatus((s, err, count) => {
+  const [status,      setStatus]      = useState('idle');
+  const [lastError,   setLastError]   = useState('');
+  const [cloudCount,  setCloudCount]  = useState(null);
+  const [hiddenCount, setHiddenCount] = useState(0);
+  const [busy,        setBusy]        = useState(false);
+  useEffect(() => subscribeVaultStatus((s, err, count, hidden) => {
     setStatus(s);
     setLastError(err || '');
     setCloudCount(count ?? null);
+    setHiddenCount(hidden ?? 0);
   }), []);
 
   const isMissingTable =
@@ -269,6 +271,10 @@ function VaultStatusCard() {
   const countLine = cloudCount == null
     ? null
     : `Cloud vault: ${cloudCount} character${cloudCount === 1 ? '' : 's'}`;
+
+  const hiddenLine = hiddenCount > 0
+    ? `${hiddenCount} deleted on this device — Restore brings them back`
+    : null;
 
   const label =
     status === 'pulling' ? 'Pulling from cloud…' :
@@ -292,7 +298,9 @@ function VaultStatusCard() {
       'drop any characters that exist locally but not in the cloud. Continue?'
     )) return;
     setBusy(true);
-    try { await pullVaultNow({ force }); }
+    // The vault card's PULL/FORCE are explicit restores: forget local
+    // deletions so cloud-backed characters return.
+    try { await pullVaultNow({ force, ignoreGraveyard: true }); }
     finally { setBusy(false); }
   };
 
@@ -312,6 +320,9 @@ function VaultStatusCard() {
           <div style={{ fontSize: 12, color }}>{label}</div>
           {countLine && (
             <div style={{ fontSize: 11, color: G.textDim, marginTop: 2 }}>{countLine}</div>
+          )}
+          {hiddenLine && (
+            <div style={{ fontSize: 11, color: G.blue, marginTop: 2 }}>{hiddenLine}</div>
           )}
         </div>
         <button

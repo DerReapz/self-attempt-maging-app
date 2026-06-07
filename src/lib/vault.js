@@ -6,26 +6,34 @@
 // row-by-row against any local state via last-write-wins on the
 // client-side updatedAt timestamp. Realtime keeps two signed-in devices
 // of the same account converged live.
+//
+// Deletion model: the cloud is a DURABLE BACKUP. Deleting a character on
+// a device does NOT delete the cloud copy. Instead the id is recorded in
+// a per-account local "graveyard" so background sync (sign-in pull,
+// realtime) won't silently resurrect it. An explicit "Restore from Cloud"
+// clears the graveyard and pulls every cloud character back. This lets a
+// user delete a character locally and recover it from the cloud later.
 
 import { supabase, isConfigured } from './supabase.js';
 import { loadAll, saveAll, subscribe } from '../utils/storage.js';
 
 const PUSH_DEBOUNCE_MS = 700;
 
-let snapshot       = {};                 // last-known character map (id → ch)
-let pending        = new Map();          // char_id → ch | null (null = soft-delete)
-let pushTimer      = null;
-let realtimeCh     = null;
-let userId         = null;
-let started        = false;
-let applyingRemote = false;              // suppress push handler during merges
+let snapshot         = {};               // last-known character map (id → ch)
+let pending          = new Map();        // char_id → ch (live upserts only)
+let pushTimer        = null;
+let realtimeCh       = null;
+let userId           = null;
+let started          = false;
+let applyingRemote   = false;            // suppress push handler during merges
+let lastCloudLiveIds = new Set();        // best-effort view of live cloud ids
 
-const status     = { current: 'offline', lastError: '', cloudCount: null };
+const status     = { current: 'offline', lastError: '', cloudCount: null, hiddenCount: 0 };
 const listeners  = new Set();
 
 const notify = () => {
   for (const fn of listeners) {
-    try { fn(status.current, status.lastError, status.cloudCount); }
+    try { fn(status.current, status.lastError, status.cloudCount, status.hiddenCount); }
     catch { /* ignore */ }
   }
 };
@@ -43,14 +51,45 @@ const setCloudCount = (n) => {
   notify();
 };
 
+const setHiddenCount = (n) => {
+  if (status.hiddenCount === n) return;
+  status.hiddenCount = n;
+  notify();
+};
+
 export const getVaultStatus    = () => status.current;
 export const getVaultLastError = () => status.lastError;
 export const getCloudCount     = () => status.cloudCount;
+export const getHiddenCount    = () => status.hiddenCount;
 export const subscribeVaultStatus = (fn) => {
   listeners.add(fn);
-  try { fn(status.current, status.lastError, status.cloudCount); } catch { /* ignore */ }
+  try { fn(status.current, status.lastError, status.cloudCount, status.hiddenCount); } catch { /* ignore */ }
   return () => listeners.delete(fn);
 };
+
+// ── Local graveyard (per account) ───────────────────────────────────────────
+// Ids the user has deleted on THIS device. Suppresses background resurrection
+// without touching the cloud copy.
+
+const GRAVEYARD_PREFIX = 'mage_vault_graveyard_';
+const graveyardKey = () => GRAVEYARD_PREFIX + (userId || 'anon');
+
+function loadGraveyard() {
+  try { return new Set(JSON.parse(localStorage.getItem(graveyardKey()) || '[]')); }
+  catch { return new Set(); }
+}
+function saveGraveyard(set) {
+  try { localStorage.setItem(graveyardKey(), JSON.stringify([...set])); } catch { /* ignore */ }
+}
+
+// hiddenCount = graveyard ids that still exist live in the cloud (i.e.
+// recoverable). Recomputed against the last known cloud view.
+function recomputeHidden() {
+  const g = loadGraveyard();
+  let n = 0;
+  for (const id of g) if (lastCloudLiveIds.has(id)) n++;
+  setHiddenCount(n);
+}
 
 // Returns the number of live (non-tombstoned) rows in the cloud vault
 // for the signed-in user. Updates the broadcast status so any subscriber
@@ -91,18 +130,6 @@ function liveRow(uid, id, ch) {
   };
 }
 
-function tombstoneRow(uid, id, prev) {
-  const now = new Date().toISOString();
-  return {
-    player_id:         uid,
-    char_id:           id,
-    name:              prev?.sheet?.identity?.name || 'Deleted Mage',
-    sheet:             prev?.sheet || {},
-    client_updated_at: now,
-    deleted_at:        now,
-  };
-}
-
 // ── Push path ─────────────────────────────────────────────────────────────
 
 async function pushBatch() {
@@ -112,11 +139,12 @@ async function pushBatch() {
   pending.clear();
   try {
     for (const [id, ch] of batch) {
-      const row = ch == null ? tombstoneRow(userId, id, snapshot[id]) : liveRow(userId, id, ch);
+      if (ch == null) continue; // never tombstone — the cloud is a backup
       const { error } = await supabase
         .from('player_characters')
-        .upsert(row, { onConflict: 'player_id,char_id' });
+        .upsert(liveRow(userId, id, ch), { onConflict: 'player_id,char_id' });
       if (error) throw error;
+      lastCloudLiveIds.add(id);
     }
     setStatus('idle');
     fetchCloudCount();
@@ -136,14 +164,29 @@ function onLocalChange(allChars) {
   if (applyingRemote || !userId) { snapshot = allChars; return; }
 
   const prev = snapshot;
+  const graveyard = loadGraveyard();
+  let graveyardChanged = false;
+
   for (const [id, ch] of Object.entries(allChars)) {
     if (!prev[id] || prev[id].updatedAt !== ch.updatedAt) {
       pending.set(id, ch);
     }
+    // A character that's present locally again (re-created, re-imported) is no
+    // longer "deleted on this device" — clear any stale graveyard entry.
+    if (graveyard.delete(id)) graveyardChanged = true;
   }
+
+  // A character removed locally is a DEVICE-LOCAL deletion only: record it in
+  // the graveyard so background sync won't bring it back, but leave the cloud
+  // copy untouched so it can be restored later.
   for (const id of Object.keys(prev)) {
-    if (!(id in allChars)) pending.set(id, null);
+    if (!(id in allChars)) {
+      pending.delete(id);
+      if (!graveyard.has(id)) { graveyard.add(id); graveyardChanged = true; }
+    }
   }
+  if (graveyardChanged) { saveGraveyard(graveyard); recomputeHidden(); }
+
   snapshot = allChars;
   if (pending.size) scheduleFlush();
 }
@@ -151,24 +194,26 @@ function onLocalChange(allChars) {
 // ── Pull / merge ──────────────────────────────────────────────────────────
 
 function mergeRowInto(next, row, { force = false } = {}) {
+  // Tombstoned rows are legacy artifacts from the old propagate-deletes
+  // behavior. The cloud is now a durable backup: never delete a local
+  // character because of a cloud tombstone — just ignore them.
+  if (row.deleted_at) return;
+
   const localCh  = next[row.char_id];
   const remoteTs = row.client_updated_at ? new Date(row.client_updated_at).getTime() : 0;
   const localTs  = localCh?.updatedAt || 0;
-
-  if (row.deleted_at) {
-    // In force mode, drop any local copy regardless of timestamps so the
-    // restore reflects the cloud state. Same for normal mode when the
-    // local copy is older than the tombstone.
-    if (localCh && (force || localTs <= remoteTs)) delete next[row.char_id];
-    return;
-  }
   if (force || !localCh || remoteTs > localTs) {
     next[row.char_id] = { ...(localCh || {}), ...rowToLocal(row) };
   }
 }
 
-export async function pullVaultNow({ force = false } = {}) {
-  if (!userId) return { added: 0, updated: 0, deleted: 0, total: 0, error: 'Not signed in' };
+// Options:
+//   force           — overwrite local with cloud and drop local-only chars
+//                     (make local an exact mirror of the cloud).
+//   ignoreGraveyard — explicit user restore: forget all local deletions so
+//                     previously-deleted characters come back and stay.
+export async function pullVaultNow({ force = false, ignoreGraveyard = false } = {}) {
+  if (!userId) return { added: 0, updated: 0, deleted: 0, total: 0, skipped: 0, error: 'Not signed in' };
   setStatus('pulling');
   try {
     const { data, error } = await supabase
@@ -177,56 +222,84 @@ export async function pullVaultNow({ force = false } = {}) {
       .eq('player_id', userId);
     if (error) throw error;
 
+    let graveyard = loadGraveyard();
+    if (force || ignoreGraveyard) { graveyard = new Set(); saveGraveyard(graveyard); }
+
+    // An explicit restore (force or ignoreGraveyard) also recovers rows that
+    // were soft-deleted by the old propagate-deletes behavior — their sheet
+    // data is still in the cloud. Background pulls keep ignoring tombstones.
+    const explicit = force || ignoreGraveyard;
+
     const before = loadAll();
     const next   = { ...before };
-    const remoteIds = new Set();
-    let added = 0, updated = 0, deleted = 0;
-    let totalLive = 0;
+    const cloudLiveIds = new Set();
+    const resurrect    = [];              // tombstoned ids being brought back
+    let added = 0, updated = 0, deleted = 0, totalLive = 0, skipped = 0;
 
     for (const row of (data || [])) {
-      remoteIds.add(row.char_id);
-      if (!row.deleted_at) totalLive++;
-      const hadLocal = !!next[row.char_id];
-      const localJson = hadLocal ? JSON.stringify(next[row.char_id]) : null;
-      mergeRowInto(next, row, { force });
-      const hasLocal = !!next[row.char_id];
+      const isTomb = !!row.deleted_at;
+      if (isTomb && !explicit) continue;   // background: ignore tombstones
 
-      if (row.deleted_at) {
-        if (hadLocal && !hasLocal) deleted++;
-      } else if (!hadLocal && hasLocal) {
-        added++;
-      } else if (hadLocal && hasLocal && JSON.stringify(next[row.char_id]) !== localJson) {
-        updated++;
+      cloudLiveIds.add(row.char_id);
+      totalLive++;
+
+      if (!explicit && graveyard.has(row.char_id)) { skipped++; continue; }
+
+      const hadLocal  = !!next[row.char_id];
+      const localJson = hadLocal ? JSON.stringify(next[row.char_id]) : null;
+      // Merge as live, dropping the deleted flag so resurrection works.
+      mergeRowInto(next, isTomb ? { ...row, deleted_at: null } : row, { force });
+      const hasLocal  = !!next[row.char_id];
+
+      if (isTomb && hasLocal) resurrect.push(row.char_id);
+      if (!hadLocal && hasLocal) added++;
+      else if (hadLocal && hasLocal && JSON.stringify(next[row.char_id]) !== localJson) updated++;
+    }
+
+    // Force restore: drop local-only entries so local mirrors the cloud.
+    if (force) {
+      for (const id of Object.keys(next)) {
+        if (!cloudLiveIds.has(id)) { delete next[id]; deleted++; }
       }
     }
 
     applyingRemote = true;
     try { saveAll(next); } finally { applyingRemote = false; }
     snapshot = next;
+    lastCloudLiveIds = cloudLiveIds;
 
-    // Anything local that isn't on the server gets queued for the next push,
-    // unless we're in force mode — in which case the user has explicitly
-    // asked for cloud to win, so we drop the local-only entries instead.
-    for (const [id, ch] of Object.entries(next)) {
-      if (!remoteIds.has(id)) {
-        if (force) delete next[id];
-        else       pending.set(id, ch);
+    // Prune graveyard ids that no longer exist in the cloud (tidy up).
+    if (!explicit && graveyard.size) {
+      let changed = false;
+      for (const id of [...graveyard]) {
+        if (!cloudLiveIds.has(id)) { graveyard.delete(id); changed = true; }
+      }
+      if (changed) saveGraveyard(graveyard);
+    }
+
+    // Re-push resurrected rows as live so the cloud tombstone is cleared.
+    for (const id of resurrect) {
+      if (next[id]) pending.set(id, next[id]);
+    }
+
+    // Auto-back-up any local-only characters not yet in the cloud (skip in
+    // force mode, where local has been made to mirror the cloud).
+    if (!force) {
+      for (const [id, ch] of Object.entries(next)) {
+        if (!cloudLiveIds.has(id)) pending.set(id, ch);
       }
     }
-    if (force) {
-      applyingRemote = true;
-      try { saveAll(next); } finally { applyingRemote = false; }
-      snapshot = next;
-    }
     if (pending.size) scheduleFlush();
+
     setCloudCount(totalLive);
+    recomputeHidden();
     setStatus('idle');
-    return { added, updated, deleted, total: totalLive, error: null };
+    return { added, updated, deleted, total: totalLive, skipped, error: null };
   } catch (e) {
     const msg = e?.message || String(e);
     console.warn('[vault] pull failed', msg);
     setStatus('error', `Pull: ${msg}`);
-    return { added: 0, updated: 0, deleted: 0, total: 0, error: msg };
+    return { added: 0, updated: 0, deleted: 0, total: 0, skipped: 0, error: msg };
   }
 }
 
@@ -252,6 +325,7 @@ export async function pushAllVault() {
         .from('player_characters')
         .upsert(liveRow(userId, id, ch), { onConflict: 'player_id,char_id' });
       if (error) throw error;
+      lastCloudLiveIds.add(id);
       pushed++;
     }
     snapshot = chars;
@@ -270,14 +344,19 @@ export async function pushAllVault() {
 
 function applyRemoteRow(row) {
   if (!row) return;
+  if (row.deleted_at) return;                 // ignore tombstones; cloud is a backup
+  if (loadGraveyard().has(row.char_id)) return; // deleted here — don't resurrect
+
   const next = { ...loadAll() };
   const before = JSON.stringify(next[row.char_id]);
   mergeRowInto(next, row);
-  if (JSON.stringify(next[row.char_id]) === before && !(row.deleted_at && next[row.char_id] === undefined)) return;
+  lastCloudLiveIds.add(row.char_id);
+  if (JSON.stringify(next[row.char_id]) === before) return;
 
   applyingRemote = true;
   try { saveAll(next); } finally { applyingRemote = false; }
   snapshot = next;
+  fetchCloudCount();
 }
 
 // ── Auth lifecycle ────────────────────────────────────────────────────────
@@ -307,6 +386,8 @@ function onSignedOut() {
   userId = null;
   unsubscribeRealtime();
   setCloudCount(null);
+  setHiddenCount(0);
+  lastCloudLiveIds = new Set();
   pending.clear();
   clearTimeout(pushTimer);
   setStatus('unauth');

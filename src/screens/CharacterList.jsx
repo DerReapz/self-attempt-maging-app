@@ -148,13 +148,14 @@ export default function CharacterList({ onOpen, onStartCreate }) {
     setBusy(true);
     toast2(force ? 'Force pulling from cloud…' : 'Pulling from cloud…', 60000);
     try {
-      const r = await pullVaultNow({ force });
+      // An explicit restore forgets local deletions so anything in the cloud
+      // backup comes back (that's the whole point of the button).
+      const r = await pullVaultNow({ force, ignoreGraveyard: true });
       if (r.error) {
         toast2(`Cloud pull failed: ${r.error}`, 6000);
         return;
       }
       const changed = r.added + r.updated + r.deleted;
-      const matched = Math.max(0, r.total - r.added - r.updated);
       const noun    = `character${r.total === 1 ? '' : 's'}`;
       if (r.total === 0) {
         toast2('Cloud vault is empty — nothing to restore', 4000);
