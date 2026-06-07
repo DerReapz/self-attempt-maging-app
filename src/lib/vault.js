@@ -20,23 +20,58 @@ let userId         = null;
 let started        = false;
 let applyingRemote = false;              // suppress push handler during merges
 
-const status     = { current: 'offline', lastError: '' };
+const status     = { current: 'offline', lastError: '', cloudCount: null };
 const listeners  = new Set();
+
+const notify = () => {
+  for (const fn of listeners) {
+    try { fn(status.current, status.lastError, status.cloudCount); }
+    catch { /* ignore */ }
+  }
+};
 
 const setStatus = (s, lastError) => {
   status.current = s;
   if (lastError !== undefined) status.lastError = lastError;
   if (s !== 'error') status.lastError = '';
-  for (const fn of listeners) { try { fn(status.current, status.lastError); } catch { /* ignore */ } }
+  notify();
+};
+
+const setCloudCount = (n) => {
+  if (status.cloudCount === n) return;
+  status.cloudCount = n;
+  notify();
 };
 
 export const getVaultStatus    = () => status.current;
 export const getVaultLastError = () => status.lastError;
+export const getCloudCount     = () => status.cloudCount;
 export const subscribeVaultStatus = (fn) => {
   listeners.add(fn);
-  try { fn(status.current, status.lastError); } catch { /* ignore */ }
+  try { fn(status.current, status.lastError, status.cloudCount); } catch { /* ignore */ }
   return () => listeners.delete(fn);
 };
+
+// Returns the number of live (non-tombstoned) rows in the cloud vault
+// for the signed-in user. Updates the broadcast status so any subscriber
+// (the vault card, the Characters screen) sees a fresh count.
+export async function fetchCloudCount() {
+  if (!userId) { setCloudCount(null); return null; }
+  try {
+    const { count, error } = await supabase
+      .from('player_characters')
+      .select('char_id', { count: 'exact', head: true })
+      .eq('player_id', userId)
+      .is('deleted_at', null);
+    if (error) throw error;
+    setCloudCount(count ?? 0);
+    return count ?? 0;
+  } catch (e) {
+    console.warn('[vault] count failed', e?.message || e);
+    setCloudCount(null);
+    return null;
+  }
+}
 
 // ── Row mappers ───────────────────────────────────────────────────────────
 
@@ -84,6 +119,7 @@ async function pushBatch() {
       if (error) throw error;
     }
     setStatus('idle');
+    fetchCloudCount();
   } catch (e) {
     const msg = e?.message || String(e);
     console.warn('[vault] push failed', msg);
@@ -183,6 +219,7 @@ export async function pullVaultNow({ force = false } = {}) {
       snapshot = next;
     }
     if (pending.size) scheduleFlush();
+    setCloudCount(totalLive);
     setStatus('idle');
     return { added, updated, deleted, total: totalLive, error: null };
   } catch (e) {
@@ -196,13 +233,16 @@ export async function pullVaultNow({ force = false } = {}) {
 // Force-push every local character to the cloud. Bypasses the debounced
 // diff queue — used by the "Backup to Cloud" button so the user gets an
 // unambiguous "yes everything is up there" round-trip on demand.
+// Verifies by re-counting the live rows in the cloud after the writes;
+// returns that count so the caller can prove the persistence to the user.
 export async function pushAllVault() {
-  if (!userId) return { pushed: 0, error: 'Not signed in' };
+  if (!userId) return { pushed: 0, cloudTotal: null, error: 'Not signed in' };
   const chars = loadAll();
   const entries = Object.entries(chars);
   if (entries.length === 0) {
+    const cloudTotal = await fetchCloudCount();
     setStatus('idle');
-    return { pushed: 0, error: null };
+    return { pushed: 0, cloudTotal, error: null };
   }
   setStatus('pushing');
   let pushed = 0;
@@ -218,12 +258,13 @@ export async function pushAllVault() {
     pending.clear();
     clearTimeout(pushTimer);
     setStatus('idle');
-    return { pushed, error: null };
+    const cloudTotal = await fetchCloudCount();
+    return { pushed, cloudTotal, error: null };
   } catch (e) {
     const msg = e?.message || String(e);
     console.warn('[vault] backup failed', msg);
     setStatus('error', `Backup: ${msg}`);
-    return { pushed, error: msg };
+    return { pushed, cloudTotal: null, error: msg };
   }
 }
 
@@ -265,6 +306,7 @@ async function onSignedIn(uid) {
 function onSignedOut() {
   userId = null;
   unsubscribeRealtime();
+  setCloudCount(null);
   pending.clear();
   clearTimeout(pushTimer);
   setStatus('unauth');

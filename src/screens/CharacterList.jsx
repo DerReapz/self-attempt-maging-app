@@ -188,9 +188,27 @@ export default function CharacterList({ onOpen, onStartCreate }) {
     toast2('Backing up to cloud…', 60000);
     try {
       const r = await pushAllVault();
-      if (r.error) toast2(`Backup failed: ${r.error}`, 6000);
-      else if (r.pushed === 0) toast2('No characters to back up', 2500);
-      else toast2(`Backed up ${r.pushed} character${r.pushed === 1 ? '' : 's'} ✓`, 3000);
+      if (r.error) {
+        toast2(`Backup failed: ${r.error}`, 6000);
+      } else if (r.pushed === 0) {
+        toast2('No characters to back up', 2500);
+      } else if (r.cloudTotal != null && r.cloudTotal < r.pushed) {
+        // Push reported success but the verifying re-count saw fewer rows
+        // than we just pushed — RLS silently dropping inserts, or a stale
+        // session writing under a different player_id. The user needs to
+        // see this, not a happy success toast.
+        toast2(
+          `Backup wrote ${r.pushed} but cloud only has ${r.cloudTotal} — check Settings → DM Sync`,
+          7000,
+        );
+      } else {
+        toast2(
+          r.cloudTotal != null
+            ? `Backed up ${r.pushed} character${r.pushed === 1 ? '' : 's'} (cloud has ${r.cloudTotal}) ✓`
+            : `Backed up ${r.pushed} character${r.pushed === 1 ? '' : 's'} ✓`,
+          4000,
+        );
+      }
     } catch (e) {
       toast2('Backup failed: ' + (e?.message || String(e)), 6000);
     } finally {
