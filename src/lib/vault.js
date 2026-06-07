@@ -114,22 +114,25 @@ function onLocalChange(allChars) {
 
 // ── Pull / merge ──────────────────────────────────────────────────────────
 
-function mergeRowInto(next, row) {
+function mergeRowInto(next, row, { force = false } = {}) {
   const localCh  = next[row.char_id];
   const remoteTs = row.client_updated_at ? new Date(row.client_updated_at).getTime() : 0;
   const localTs  = localCh?.updatedAt || 0;
 
   if (row.deleted_at) {
-    if (localCh && localTs <= remoteTs) delete next[row.char_id];
+    // In force mode, drop any local copy regardless of timestamps so the
+    // restore reflects the cloud state. Same for normal mode when the
+    // local copy is older than the tombstone.
+    if (localCh && (force || localTs <= remoteTs)) delete next[row.char_id];
     return;
   }
-  if (!localCh || remoteTs > localTs) {
+  if (force || !localCh || remoteTs > localTs) {
     next[row.char_id] = { ...(localCh || {}), ...rowToLocal(row) };
   }
 }
 
-export async function pullVaultNow() {
-  if (!userId) return { added: 0, updated: 0, deleted: 0, error: 'Not signed in' };
+export async function pullVaultNow({ force = false } = {}) {
+  if (!userId) return { added: 0, updated: 0, deleted: 0, total: 0, error: 'Not signed in' };
   setStatus('pulling');
   try {
     const { data, error } = await supabase
@@ -142,12 +145,14 @@ export async function pullVaultNow() {
     const next   = { ...before };
     const remoteIds = new Set();
     let added = 0, updated = 0, deleted = 0;
+    let totalLive = 0;
 
     for (const row of (data || [])) {
       remoteIds.add(row.char_id);
+      if (!row.deleted_at) totalLive++;
       const hadLocal = !!next[row.char_id];
       const localJson = hadLocal ? JSON.stringify(next[row.char_id]) : null;
-      mergeRowInto(next, row);
+      mergeRowInto(next, row, { force });
       const hasLocal = !!next[row.char_id];
 
       if (row.deleted_at) {
@@ -163,17 +168,28 @@ export async function pullVaultNow() {
     try { saveAll(next); } finally { applyingRemote = false; }
     snapshot = next;
 
+    // Anything local that isn't on the server gets queued for the next push,
+    // unless we're in force mode — in which case the user has explicitly
+    // asked for cloud to win, so we drop the local-only entries instead.
     for (const [id, ch] of Object.entries(next)) {
-      if (!remoteIds.has(id)) pending.set(id, ch);
+      if (!remoteIds.has(id)) {
+        if (force) delete next[id];
+        else       pending.set(id, ch);
+      }
+    }
+    if (force) {
+      applyingRemote = true;
+      try { saveAll(next); } finally { applyingRemote = false; }
+      snapshot = next;
     }
     if (pending.size) scheduleFlush();
     setStatus('idle');
-    return { added, updated, deleted, error: null };
+    return { added, updated, deleted, total: totalLive, error: null };
   } catch (e) {
     const msg = e?.message || String(e);
     console.warn('[vault] pull failed', msg);
     setStatus('error', `Pull: ${msg}`);
-    return { added: 0, updated: 0, deleted: 0, error: msg };
+    return { added: 0, updated: 0, deleted: 0, total: 0, error: msg };
   }
 }
 
