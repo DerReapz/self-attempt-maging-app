@@ -253,13 +253,22 @@ export default function DMSyncSection() {
 
 function VaultStatusCard() {
   const G = useTheme();
-  const [status,    setStatus]    = useState('idle');
-  const [lastError, setLastError] = useState('');
-  const [busy,      setBusy]      = useState(false);
-  useEffect(() => subscribeVaultStatus((s, err) => { setStatus(s); setLastError(err || ''); }), []);
+  const [status,     setStatus]     = useState('idle');
+  const [lastError,  setLastError]  = useState('');
+  const [cloudCount, setCloudCount] = useState(null);
+  const [busy,       setBusy]       = useState(false);
+  useEffect(() => subscribeVaultStatus((s, err, count) => {
+    setStatus(s);
+    setLastError(err || '');
+    setCloudCount(count ?? null);
+  }), []);
 
   const isMissingTable =
     lastError && /relation .*player_characters.* does not exist/i.test(lastError);
+
+  const countLine = cloudCount == null
+    ? null
+    : `Cloud vault: ${cloudCount} character${cloudCount === 1 ? '' : 's'}`;
 
   const label =
     status === 'pulling' ? 'Pulling from cloud…' :
@@ -301,6 +310,9 @@ function VaultStatusCard() {
             color: G.goldDim, textTransform: 'uppercase', marginBottom: 2,
           }}>Character vault</div>
           <div style={{ fontSize: 12, color }}>{label}</div>
+          {countLine && (
+            <div style={{ fontSize: 11, color: G.textDim, marginTop: 2 }}>{countLine}</div>
+          )}
         </div>
         <button
           onClick={() => pull(false)}
