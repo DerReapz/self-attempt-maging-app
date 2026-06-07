@@ -143,24 +143,43 @@ export default function CharacterList({ onOpen, onStartCreate }) {
 
   const refreshChars = () => setChars(loadAll());
 
-  const handleRestore = async () => {
+  const handleRestore = async (force = false) => {
     if (busy) return;
     setBusy(true);
-    toast2('Pulling from cloud…', 60000);
+    toast2(force ? 'Force pulling from cloud…' : 'Pulling from cloud…', 60000);
     try {
-      const r = await pullVaultNow();
+      const r = await pullVaultNow({ force });
       if (r.error) {
         toast2(`Cloud pull failed: ${r.error}`, 6000);
         return;
       }
-      const n = r.added + r.updated + r.deleted;
-      if (n === 0) toast2('Already in sync with cloud ✓', 2500);
-      else         toast2(`Restored from cloud: +${r.added}, ↻${r.updated}, −${r.deleted}`, 4000);
+      const changed = r.added + r.updated + r.deleted;
+      const matched = Math.max(0, r.total - r.added - r.updated);
+      const noun    = `character${r.total === 1 ? '' : 's'}`;
+      if (r.total === 0) {
+        toast2('Cloud vault is empty — nothing to restore', 4000);
+      } else if (changed === 0) {
+        toast2(`Cloud has ${r.total} ${noun}, all match local ✓`, 4000);
+      } else {
+        toast2(
+          `Cloud has ${r.total} ${noun}: +${r.added} new, ↻${r.updated} updated, −${r.deleted} removed`,
+          5000,
+        );
+      }
     } catch (e) {
       toast2('Cloud pull failed: ' + (e?.message || String(e)), 6000);
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleForceRestore = async () => {
+    if (busy) return;
+    if (!window.confirm(
+      'Force restore will overwrite local characters with the cloud copy and ' +
+      'remove any characters that exist locally but not in the cloud. Continue?'
+    )) return;
+    await handleRestore(true);
   };
 
   const handleBackup = async () => {
@@ -215,9 +234,10 @@ export default function CharacterList({ onOpen, onStartCreate }) {
         <button style={btnS({ fontSize: 10, color: G.teal, borderColor: `${G.teal}55` })} onClick={handleBackupZip} disabled={busy}>{busy ? 'Building…' : '↓ Backup PDF ZIP'}</button>
         {signedIn && (
           <button
-            onClick={handleRestore}
+            onClick={() => handleRestore(false)}
+            onContextMenu={(e) => { e.preventDefault(); handleForceRestore(); }}
             disabled={busy || vaultStatus === 'pulling'}
-            title="Pull characters bound to your account from Supabase"
+            title="Tap: merge cloud into local (last-write-wins). Long-press / right-click: force overwrite local with cloud."
             style={btnS({
               fontSize: 10,
               color: vaultStatus === 'error' ? G.red : G.blue,

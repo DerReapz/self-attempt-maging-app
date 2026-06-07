@@ -276,12 +276,18 @@ function VaultStatusCard() {
     status === 'pulling' || status === 'pushing'         ? G.teal :
                                                            G.goldDim;
 
-  const pull = async () => {
+  const pull = async (force = false) => {
     if (busy) return;
+    if (force && !window.confirm(
+      'Force pull will overwrite local characters with the cloud copy and ' +
+      'drop any characters that exist locally but not in the cloud. Continue?'
+    )) return;
     setBusy(true);
-    try { await pullVaultNow(); }
+    try { await pullVaultNow({ force }); }
     finally { setBusy(false); }
   };
+
+  const disabled = busy || status === 'offline' || status === 'unauth';
 
   return (
     <div style={{
@@ -297,8 +303,8 @@ function VaultStatusCard() {
           <div style={{ fontSize: 12, color }}>{label}</div>
         </div>
         <button
-          onClick={pull}
-          disabled={busy || status === 'offline' || status === 'unauth'}
+          onClick={() => pull(false)}
+          disabled={disabled}
           style={{
             fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
             border: `1px solid ${G.gold}55`, borderRadius: 2,
@@ -308,6 +314,20 @@ function VaultStatusCard() {
           }}
         >
           {busy ? '…' : '↓ PULL'}
+        </button>
+        <button
+          onClick={() => pull(true)}
+          disabled={disabled}
+          title="Overwrite local characters with the cloud copy"
+          style={{
+            fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
+            border: `1px solid ${G.red}55`, borderRadius: 2,
+            background: 'transparent', color: G.red,
+            padding: '6px 10px', cursor: busy ? 'default' : 'pointer',
+            opacity: busy ? 0.5 : 1,
+          }}
+        >
+          ⚠ FORCE
         </button>
       </div>
       {status === 'error' && lastError && (
