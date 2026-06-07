@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { Toast } from '../components/SharedUI.jsx';
+import CloudVaultModal from '../components/CloudVaultModal.jsx';
 import { loadAll, saveAll, newId, exportCharsToJson, subscribe } from '../utils/storage.js';
 import { exportCharAsPDF } from '../utils/pdfExport.js';
 import { exportAllAsPDFZip, importFromPDF, importFromPDFZip } from '../utils/backup.js';
-import { pullVaultNow, pushAllVault, subscribeVaultStatus } from '../lib/vault.js';
+import { pushAllVault, subscribeVaultStatus } from '../lib/vault.js';
 import { getUser } from '../lib/dmSync.js';
 
 export default function CharacterList({ onOpen, onStartCreate }) {
@@ -16,6 +17,7 @@ export default function CharacterList({ onOpen, onStartCreate }) {
   const [busy,        setBusy]        = useState(false);
   const [vaultStatus, setVaultStatus] = useState('offline');
   const [signedIn,    setSignedIn]    = useState(false);
+  const [showCloud,   setShowCloud]   = useState(false);
   const lastStatusRef                 = useRef('offline');
 
   useEffect(() => subscribe((next) => setChars(next)), []);
@@ -143,46 +145,6 @@ export default function CharacterList({ onOpen, onStartCreate }) {
 
   const refreshChars = () => setChars(loadAll());
 
-  const handleRestore = async (force = false) => {
-    if (busy) return;
-    setBusy(true);
-    toast2(force ? 'Force pulling from cloud…' : 'Pulling from cloud…', 60000);
-    try {
-      // An explicit restore forgets local deletions so anything in the cloud
-      // backup comes back (that's the whole point of the button).
-      const r = await pullVaultNow({ force, ignoreGraveyard: true });
-      if (r.error) {
-        toast2(`Cloud pull failed: ${r.error}`, 6000);
-        return;
-      }
-      const changed = r.added + r.updated + r.deleted;
-      const noun    = `character${r.total === 1 ? '' : 's'}`;
-      if (r.total === 0) {
-        toast2('Cloud vault is empty — nothing to restore', 4000);
-      } else if (changed === 0) {
-        toast2(`Cloud has ${r.total} ${noun}, all match local ✓`, 4000);
-      } else {
-        toast2(
-          `Cloud has ${r.total} ${noun}: +${r.added} new, ↻${r.updated} updated, −${r.deleted} removed`,
-          5000,
-        );
-      }
-    } catch (e) {
-      toast2('Cloud pull failed: ' + (e?.message || String(e)), 6000);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleForceRestore = async () => {
-    if (busy) return;
-    if (!window.confirm(
-      'Force restore will overwrite local characters with the cloud copy and ' +
-      'remove any characters that exist locally but not in the cloud. Continue?'
-    )) return;
-    await handleRestore(true);
-  };
-
   const handleBackup = async () => {
     if (busy) return;
     setBusy(true);
@@ -253,17 +215,16 @@ export default function CharacterList({ onOpen, onStartCreate }) {
         <button style={btnS({ fontSize: 10, color: G.teal, borderColor: `${G.teal}55` })} onClick={handleBackupZip} disabled={busy}>{busy ? 'Building…' : '↓ Backup PDF ZIP'}</button>
         {signedIn && (
           <button
-            onClick={() => handleRestore(false)}
-            onContextMenu={(e) => { e.preventDefault(); handleForceRestore(); }}
+            onClick={() => setShowCloud(true)}
             disabled={busy || vaultStatus === 'pulling'}
-            title="Tap: merge cloud into local (last-write-wins). Long-press / right-click: force overwrite local with cloud."
+            title="Browse characters stored in the cloud — restore or delete each one"
             style={btnS({
               fontSize: 10,
               color: vaultStatus === 'error' ? G.red : G.blue,
               borderColor: vaultStatus === 'error' ? `${G.red}88` : `${G.blue}66`,
             })}
           >
-            {vaultStatus === 'pulling' ? 'Pulling…' : vaultStatus === 'error' ? '⚠ Retry Cloud Pull' : '↻ Restore from Cloud'}
+            {vaultStatus === 'pulling' ? 'Pulling…' : vaultStatus === 'error' ? '⚠ Cloud (error)' : '☁ Restore from Cloud'}
           </button>
         )}
         {signedIn && (
@@ -318,6 +279,10 @@ export default function CharacterList({ onOpen, onStartCreate }) {
           );
         })}
       </div>
+
+      {showCloud && (
+        <CloudVaultModal onClose={() => setShowCloud(false)} onToast={toast2} />
+      )}
 
       <Toast msg={toast} />
     </div>

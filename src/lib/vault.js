@@ -342,6 +342,81 @@ export async function pushAllVault() {
   }
 }
 
+// ── Cloud browser (popup) ───────────────────────────────────────────────────
+// List, restore, and delete individual cloud rows. Powers the "Restore from
+// Cloud" popup. Includes tombstoned rows so the user can recover or purge
+// characters deleted under the old behavior.
+
+export async function listCloudCharacters() {
+  if (!userId) return { rows: [], error: 'Not signed in' };
+  try {
+    const { data, error } = await supabase
+      .from('player_characters')
+      .select('char_id, name, sheet, client_updated_at, deleted_at')
+      .eq('player_id', userId)
+      .order('client_updated_at', { ascending: false });
+    if (error) throw error;
+    return { rows: data || [], error: null };
+  } catch (e) {
+    return { rows: [], error: e?.message || String(e) };
+  }
+}
+
+// Pull a single character down to the device. Clears any graveyard entry and,
+// if the cloud row was tombstoned, re-pushes it live to clear the tombstone.
+export async function restoreOneFromCloud(charId) {
+  if (!userId) return { error: 'Not signed in' };
+  try {
+    const { data, error } = await supabase
+      .from('player_characters')
+      .select('char_id, name, sheet, client_updated_at, deleted_at')
+      .eq('player_id', userId)
+      .eq('char_id', charId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return { error: 'Not found in cloud' };
+
+    const next = { ...loadAll() };
+    next[charId] = { ...(next[charId] || {}), ...rowToLocal({ ...data, deleted_at: null }) };
+    applyingRemote = true;
+    try { saveAll(next); } finally { applyingRemote = false; }
+    snapshot = next;
+
+    const g = loadGraveyard();
+    if (g.delete(charId)) saveGraveyard(g);
+
+    lastCloudLiveIds.add(charId);
+    if (data.deleted_at) { pending.set(charId, next[charId]); scheduleFlush(); }
+
+    recomputeHidden();
+    fetchCloudCount();
+    const name = data.sheet?.identity?.name || data.name || 'Unnamed Mage';
+    return { error: null, name };
+  } catch (e) {
+    return { error: e?.message || String(e) };
+  }
+}
+
+// Hard-delete a row from the cloud vault. Explicit, destructive, owner-only.
+export async function deleteFromCloud(charId) {
+  if (!userId) return { error: 'Not signed in' };
+  try {
+    const { error } = await supabase
+      .from('player_characters')
+      .delete()
+      .eq('player_id', userId)
+      .eq('char_id', charId);
+    if (error) throw error;
+    lastCloudLiveIds.delete(charId);
+    pending.delete(charId);   // don't immediately re-upload it from a queued edit
+    recomputeHidden();
+    fetchCloudCount();
+    return { error: null };
+  } catch (e) {
+    return { error: e?.message || String(e) };
+  }
+}
+
 function applyRemoteRow(row) {
   if (!row) return;
   if (row.deleted_at) return;                 // ignore tombstones; cloud is a backup
