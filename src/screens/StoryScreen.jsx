@@ -6,6 +6,8 @@ import {
   fetchStoryPages, createStoryPage, updateStoryPageContent,
   updateStoryPageTitle, deleteStoryPage, subscribeStoryPages,
 } from '../lib/dmSync.js';
+import TrashedChaptersModal from '../components/TrashedChaptersModal.jsx';
+import { Toast } from '../components/SharedUI.jsx';
 
 const LAST_SESSION_KEY = 'mage_story_last_session';
 
@@ -25,6 +27,9 @@ export default function StoryScreen() {
   const [savedAt,   setSavedAt]   = useState(null);
   const [err,       setErr]       = useState('');
   const [renaming,  setRenaming]  = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  const [trashTick, setTrashTick] = useState(0);  // bumped after restore
+  const [toast,     setToast]     = useState('');
 
   // Active-page edit tracking so remote events don't clobber what's being typed.
   const editingRef    = useRef(false);
@@ -131,9 +136,18 @@ export default function StoryScreen() {
         if (!goneId) return;
         setPages((prev) => prev.filter((p) => p.id !== goneId));
         setActiveId((cur) => (cur === goneId ? null : cur));
+        setTrashTick((t) => t + 1);   // a permanent purge happened — refresh trash if open
         return;
       }
       if (!row) return;
+      // Soft delete: row still exists, but deleted_at is now set. Treat as
+      // removal from the active list; the row is still recoverable via Trash.
+      if (row.deleted_at) {
+        setPages((prev) => prev.filter((p) => p.id !== row.id));
+        setActiveId((cur) => (cur === row.id ? null : cur));
+        setTrashTick((t) => t + 1);
+        return;
+      }
       // For the active page, don't trample an in-progress edit.
       if (row.id === activeIdRef.current) {
         const idle = !editingRef.current && Date.now() - lastEditRef.current > 1500;
@@ -192,16 +206,20 @@ export default function StoryScreen() {
     catch (e) { setErr(e.message); }
   };
 
+  const toast2 = (msg, ms = 3000) => { setToast(msg); setTimeout(() => setToast(''), ms); };
+
   const removeChapter = async () => {
     if (!active) return;
     const canDelete = isDM || active.created_by === user.id;
     if (!canDelete) { setErr('Only the chapter author or the DM can delete this chapter.'); return; }
-    if (!window.confirm(`Delete chapter "${active.title}"? This removes it for everyone in the chronicle.`)) return;
+    if (!window.confirm(`Move "${active.title}" to Trash? You can restore it from the 🗑 Trash button.`)) return;
     const goneId = active.id;
     flushSave();
     setPages((prev) => prev.filter((p) => p.id !== goneId));
-    try { await deleteStoryPage(goneId); }
-    catch (e) { setErr(e.message); }
+    try {
+      await deleteStoryPage(goneId);
+      toast2('Moved to Trash — restore from 🗑', 3500);
+    } catch (e) { setErr(e.message); }
   };
 
   // ── Gates ────────────────────────────────────────────────────────────
@@ -277,6 +295,15 @@ export default function StoryScreen() {
             border: `1px dashed ${G.gold}66`, background: 'transparent', color: G.goldDim,
           }}
         >+</button>
+        <button
+          onClick={() => setShowTrash(true)}
+          title="Restore deleted chapters"
+          style={{
+            flexShrink: 0, fontFamily: 'Cinzel,serif', fontSize: 12, lineHeight: 1,
+            padding: '5px 10px', borderRadius: 3, cursor: 'pointer',
+            border: `1px solid ${G.gold}33`, background: 'transparent', color: G.goldDim,
+          }}
+        >🗑</button>
       </div>
 
       {/* Active-chapter toolbar */}
@@ -350,6 +377,18 @@ export default function StoryScreen() {
           >+ ADD CHAPTER</button>
         </div>
       )}
+
+      {showTrash && (
+        <TrashedChaptersModal
+          key={trashTick}
+          sessionId={sessionId}
+          isDM={isDM}
+          onClose={() => setShowTrash(false)}
+          onToast={toast2}
+        />
+      )}
+
+      <Toast msg={toast} />
     </div>
   );
 }

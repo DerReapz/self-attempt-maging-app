@@ -168,10 +168,24 @@ export async function fetchStoryPages(sessionId) {
   if (!isConfigured()) return [];
   const { data, error } = await supabase
     .from('story_pages')
-    .select('id, title, content, position, created_by, created_at, updated_at')
+    .select('id, title, content, position, created_by, created_at, updated_at, deleted_at')
     .eq('session_id', sessionId)
+    .is('deleted_at', null)
     .order('position', { ascending: true })
     .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+// Trash listing: soft-deleted chapters for this session, newest deletion first.
+export async function fetchDeletedStoryPages(sessionId) {
+  if (!isConfigured()) return [];
+  const { data, error } = await supabase
+    .from('story_pages')
+    .select('id, title, content, position, created_by, deleted_at, deleted_by, updated_at, profiles:deleted_by(handle)')
+    .eq('session_id', sessionId)
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
   if (error) throw error;
   return data || [];
 }
@@ -215,7 +229,30 @@ export async function updateStoryPageTitle(pageId, title) {
   if (error) throw error;
 }
 
+// Soft-delete: moves the chapter to Trash. Recoverable via restoreStoryPage.
 export async function deleteStoryPage(pageId) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+  const { error } = await supabase
+    .from('story_pages')
+    .update({ deleted_at: new Date().toISOString(), deleted_by: user.id })
+    .eq('id', pageId);
+  if (error) throw error;
+}
+
+// Bring a soft-deleted chapter back into the active list.
+export async function restoreStoryPage(pageId) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+  const { error } = await supabase
+    .from('story_pages')
+    .update({ deleted_at: null, deleted_by: null, updated_by: user.id })
+    .eq('id', pageId);
+  if (error) throw error;
+}
+
+// Permanent purge from Trash. Gated to the DM by RLS.
+export async function purgeStoryPage(pageId) {
   const { error } = await supabase.from('story_pages').delete().eq('id', pageId);
   if (error) throw error;
 }
