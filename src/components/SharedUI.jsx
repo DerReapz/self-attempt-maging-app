@@ -62,10 +62,10 @@ export function Dots({ max = 5, value, onChange, color }) {
   const G = useTheme();
   const c = color ?? G.gold;
   return (
-    <span style={{ display: 'inline-flex', gap: 4 }}>
+    <span style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>
       {Array.from({ length: max }).map((_, i) => (
         <span key={i} onClick={() => onChange(i + 1 === value ? 0 : i + 1)}
-          style={{ width: 14, height: 14, borderRadius: '50%', border: `1.5px solid ${c}`, background: i < value ? c : 'transparent', cursor: 'pointer', flexShrink: 0, transition: 'background .12s', boxShadow: i < value ? `0 0 4px ${c}88` : 'none' }} />
+          style={{ width: 14, height: 14, borderRadius: '50%', border: `1.5px solid ${c}`, background: i < value ? c : 'transparent', cursor: 'pointer', flexShrink: 0, transition: 'background .12s', boxShadow: i < value ? `0 0 4px ${c}88` : 'none', boxSizing: 'border-box' }} />
       ))}
     </span>
   );
@@ -105,10 +105,10 @@ export function Field({ label, value, onChange, flex = '1 1 160px', fs = 13 }) {
 export function SkillRow({ label, spec, onSpec, value, onChange }) {
   const G = useTheme();
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5 }}>
-      <span style={{ fontSize: 13, color: G.text, minWidth: 84, flexShrink: 0 }}>{label}</span>
-      <input value={spec} onChange={(e) => onSpec(e.target.value)} placeholder="specialty"
-        style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.goldDim, fontSize: 11, fontStyle: 'italic', outline: 'none', padding: '0 1px', minWidth: 0 }} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 5, minWidth: 0, maxWidth: '100%' }}>
+      <span style={{ fontSize: 13, color: G.text, minWidth: 0, flexShrink: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+      <input value={spec} onChange={(e) => onSpec(e.target.value)} placeholder="spec"
+        style={{ flex: '1 1 0%', width: 0, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.goldDim, fontSize: 11, fontStyle: 'italic', outline: 'none', padding: '0 1px', minWidth: 0, boxSizing: 'border-box' }} />
       <Dots max={5} value={value} onChange={onChange} />
     </div>
   );
@@ -118,9 +118,9 @@ export function SkillRow({ label, spec, onSpec, value, onChange }) {
 export function FreeRow({ name, onName, value, onChange, placeholder = '…' }) {
   const G = useTheme();
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, minWidth: 0, maxWidth: '100%' }}>
       <input value={name} onChange={(e) => onName(e.target.value)} placeholder={placeholder}
-        style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.text, fontSize: 13, outline: 'none', padding: '1px 2px', minWidth: 0 }} />
+        style={{ flex: '1 1 0%', width: 0, background: 'transparent', border: 'none', borderBottom: `1px solid ${G.goldFaint}`, color: G.text, fontSize: 13, outline: 'none', padding: '1px 2px', minWidth: 0, boxSizing: 'border-box' }} />
       <Dots max={5} value={value} onChange={onChange} />
     </div>
   );
