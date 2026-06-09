@@ -7,7 +7,7 @@ import { exportToPDF } from '../utils/pdfExport.js';
 
 export default function CharacterSheet({ charId, onBack }) {
   const G       = useTheme();
-  const card    = { background: G.card, border: `1px solid ${G.border}`, borderRadius: 3, padding: '12px 14px', marginBottom: 12 };
+  const card    = { background: G.card, border: `1px solid ${G.border}`, borderRadius: 3, padding: '12px 14px', marginBottom: 12, boxSizing: 'border-box', minWidth: 0, overflow: 'hidden' };
   const statLbl = { fontFamily: 'Cinzel,serif', fontSize: 9, letterSpacing: '.22em', color: G.goldDim, display: 'block', marginBottom: 5 };
   const btnS    = (extra = {}) => ({ fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em', border: `1px solid ${G.gold}44`, borderRadius: 3, background: 'transparent', color: G.goldDim, padding: '6px 12px', cursor: 'pointer', ...extra });
   const [sheet,       setSheet]       = useState(null);
@@ -130,9 +130,9 @@ export default function CharacterSheet({ charId, onBack }) {
 
       <div style={card}>
         <Divider>Attributes</Divider>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', minWidth: 0 }}>
           {[['Physical','physical',phys],['Social','social',soc],['Mental','mental',ment]].map(([lbl, sec, st]) => (
-            <div key={sec} style={{ flex: '1 1 180px' }}>
+            <div key={sec} style={{ flex: '1 1 180px', minWidth: 0 }}>
               <div style={{ fontFamily: 'Cinzel,serif', fontSize: 11, letterSpacing: '.2em', color: G.gold, textAlign: 'center', marginBottom: 8, fontWeight: 700 }}>{lbl}</div>
               {Object.entries(st).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -147,9 +147,9 @@ export default function CharacterSheet({ charId, onBack }) {
 
       <div style={card}>
         <Divider>Skills</Divider>
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', minWidth: 0 }}>
           {[['physSkills', sheet.physSkills],['socSkills', sheet.socSkills],['mentSkills', sheet.mentSkills]].map(([field, skills]) => (
-            <div key={field} style={{ flex: '1 1 200px' }}>
+            <div key={field} style={{ flex: '1 1 200px', minWidth: 0 }}>
               {skills.map((s, i) => (
                 <SkillRow key={s.label} label={s.label} spec={s.spec} value={s.value}
                   onSpec={(v) => updSkill(field, i, 'spec', v)}
@@ -160,9 +160,9 @@ export default function CharacterSheet({ charId, onBack }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12, minWidth: 0 }}>
         {[['Chronicle Tenets','chronicleTenets'],['Touchstones & Convictions','touchstones'],['Tradition Tenets','tradTenets']].map(([title, field]) => (
-          <div key={field} style={{ ...card, flex: '1 1 220px', marginBottom: 0 }}>
+          <div key={field} style={{ ...card, flex: '1 1 220px', marginBottom: 0, minWidth: 0 }}>
             <div style={{ fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.18em', color: G.gold, fontWeight: 700, marginBottom: 7 }}>{title.toUpperCase()}</div>
             <Lines values={sheet[field]} onChange={(v) => upd(field, v)} />
           </div>
