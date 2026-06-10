@@ -12,7 +12,7 @@ const THICKNESSES = [2, 4, 8, 14];
 async function ensureBattlemap(sessionId) {
   const { data: existing, error: e1 } = await supabase
     .from('battlemaps')
-    .select('id, name, background_url, width, height, updated_at')
+    .select('id, name, background_url, background_locked, width, height, updated_at')
     .eq('session_id', sessionId)
     .maybeSingle();
   if (e1) throw e1;
@@ -21,7 +21,7 @@ async function ensureBattlemap(sessionId) {
   const { data, error } = await supabase
     .from('battlemaps')
     .insert({ session_id: sessionId, name: 'Battlemap', created_by: user?.id, updated_by: user?.id })
-    .select('id, name, background_url, width, height, updated_at')
+    .select('id, name, background_url, background_locked, width, height, updated_at')
     .single();
   if (error) throw error;
   return data;
@@ -447,7 +447,7 @@ function BattlemapInner({ sessionId, me, isDM }) {
       const { data, error } = await supabase.from('battlemaps')
         .update({ background_url: pub.publicUrl, width: dims.w, height: dims.h, updated_by: user?.id })
         .eq('id', map.id)
-        .select('id, name, background_url, width, height, updated_at').single();
+        .select('id, name, background_url, background_locked, width, height, updated_at').single();
       if (error) throw error;
       setMap(data);
       toast2('Background uploaded ✓');
@@ -468,13 +468,34 @@ function BattlemapInner({ sessionId, me, isDM }) {
         .from('battlemaps')
         .update({ background_url: null, updated_by: user?.id })
         .eq('id', map.id)
-        .select('id, name, background_url, width, height, updated_at')
+        .select('id, name, background_url, background_locked, width, height, updated_at')
         .single();
       if (error) throw error;
       setMap(data);
       if (path) await supabase.storage.from('battlemaps').remove([path]).catch(() => {});
       toast2('Background removed ✓');
     } catch (e) { toast2(`Remove failed: ${e.message}`, 6000); }
+    finally { setBusy(false); }
+  };
+
+  // DM-only: toggle background lock. Database trigger enforces the same rule
+  // so a hand-crafted API call from a player can't bypass the UI gate.
+  const toggleBackgroundLock = async () => {
+    if (!map || !isDM) return;
+    const next = !map.background_locked;
+    setBusy(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase
+        .from('battlemaps')
+        .update({ background_locked: next, updated_by: user?.id })
+        .eq('id', map.id)
+        .select('id, name, background_url, background_locked, width, height, updated_at')
+        .single();
+      if (error) throw error;
+      setMap(data);
+      toast2(next ? 'Background locked' : 'Background unlocked');
+    } catch (e) { toast2(`Lock failed: ${e.message}`, 6000); }
     finally { setBusy(false); }
   };
 
@@ -563,22 +584,57 @@ function BattlemapInner({ sessionId, me, isDM }) {
             opacity: redoRef.current.length === 0 ? 0.4 : 1,
             cursor: redoRef.current.length === 0 ? 'default' : 'pointer',
           }}>↷ REDO</button>
-        <label style={{
-          fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
-          border: `1px solid ${G.gold}66`, borderRadius: 3, color: G.goldDim,
-          padding: '5px 10px', cursor: 'pointer', background: 'transparent',
-        }}>
-          ↑ BACKGROUND
-          <input type="file" accept="image/*" style={{ display: 'none' }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBackground(f); e.target.value = ''; }} />
-        </label>
-        {map?.background_url && (
-          <button onClick={deleteBackground} title="Remove the background image"
+        {(() => {
+          const locked     = !!map?.background_locked;
+          const bgDisabled = locked && !isDM;
+          return (
+            <label title={bgDisabled ? 'Background locked by DM' : 'Upload a background image'} style={{
+              fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
+              border: `1px solid ${G.gold}66`, borderRadius: 3, color: G.goldDim,
+              padding: '5px 10px', background: 'transparent',
+              cursor: bgDisabled ? 'not-allowed' : 'pointer',
+              opacity: bgDisabled ? 0.5 : 1,
+            }}>
+              ↑ BACKGROUND
+              <input type="file" accept="image/*" style={{ display: 'none' }} disabled={bgDisabled}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBackground(f); e.target.value = ''; }} />
+            </label>
+          );
+        })()}
+        {map?.background_url && (() => {
+          const locked   = !!map?.background_locked;
+          const disabled = locked && !isDM;
+          return (
+            <button onClick={deleteBackground} disabled={disabled}
+              title={disabled ? 'Background locked by DM' : 'Remove the background image'}
+              style={{
+                fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
+                border: `1px solid ${G.red}66`, borderRadius: 3, background: 'transparent',
+                color: G.red, padding: '5px 10px',
+                cursor: disabled ? 'not-allowed' : 'pointer',
+                opacity: disabled ? 0.4 : 1,
+              }}>✕ BG</button>
+          );
+        })()}
+        {isDM && (
+          <button onClick={toggleBackgroundLock} disabled={busy}
+            title={map?.background_locked ? 'Unlock the background' : 'Lock the background so players cannot change it'}
             style={{
               fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
-              border: `1px solid ${G.red}66`, borderRadius: 3, background: 'transparent',
-              color: G.red, padding: '5px 10px', cursor: 'pointer',
-            }}>✕ BG</button>
+              border: `1px solid ${map?.background_locked ? G.gold : G.border}`, borderRadius: 3,
+              background: map?.background_locked ? G.goldFaint : 'transparent',
+              color: map?.background_locked ? G.gold : G.goldDim,
+              padding: '5px 10px', cursor: 'pointer',
+            }}>
+            {map?.background_locked ? '🔒 LOCKED' : '🔓 LOCK BG'}
+          </button>
+        )}
+        {!isDM && map?.background_locked && (
+          <span title="The DM has locked this background image"
+            style={{
+              fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
+              color: G.goldDim, padding: '5px 6px',
+            }}>🔒 LOCKED</span>
         )}
         <button onClick={() => setAdding(true)} style={{
           fontFamily: 'Cinzel,serif', fontSize: 10, letterSpacing: '.12em',
