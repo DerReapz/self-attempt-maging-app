@@ -169,16 +169,16 @@ export default function CharacterSheet({ charId, onBack }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        <div style={{ ...card, flex: '2 1 400px' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start', minWidth: 0 }}>
+        <div style={{ ...card, flex: '2 1 400px', minWidth: 0 }}>
           <Divider>Spheres</Divider>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: 10, minWidth: 0 }}>
             {sheet.spheres.map((s, i) => (
               <SphereBlock key={i} sphere={s} onUpdate={(ns) => updSph(i, ns)} />
             ))}
           </div>
         </div>
-        <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ flex: '1 1 200px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[['Health','health',G.gold,'square'],['Willpower','willpower',G.blue,'square']].map(([lbl, field, col, shape]) => (
             <div key={field} style={card}>
               <span style={statLbl}>{lbl}</span>
