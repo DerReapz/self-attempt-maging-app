@@ -56,15 +56,24 @@ const Ctx = createContext({ G: THEMES.dark, setTheme: () => {} });
 export const useTheme    = () => useContext(Ctx).G;
 export const useSetTheme = () => useContext(Ctx).setTheme;
 
+// Validate "#rrggbb"; fall back to a sentinel so a corrupted localStorage
+// value can't produce NaN-laced CSS that wedges the UI on cold start.
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const safeHex = (v, fb) => (typeof v === 'string' && HEX.test(v) ? v : fb);
+
 export function ThemeProvider({ children }) {
   const [G, setG] = useState(() => {
-    const mode = localStorage.getItem('mage_theme_mode') || 'dark';
-    if (mode === 'custom') {
-      const bg  = localStorage.getItem('mage_custom_bg')  || '#0d0808';
-      const acc = localStorage.getItem('mage_custom_acc') || '#c8a84b';
-      return buildCustomTheme(bg, acc);
+    try {
+      const mode = localStorage.getItem('mage_theme_mode') || 'dark';
+      if (mode === 'custom') {
+        const bg  = safeHex(localStorage.getItem('mage_custom_bg'),  '#0d0808');
+        const acc = safeHex(localStorage.getItem('mage_custom_acc'), '#c8a84b');
+        return buildCustomTheme(bg, acc);
+      }
+      return THEMES[mode] || THEMES.dark;
+    } catch {
+      return THEMES.dark;
     }
-    return THEMES[mode] || THEMES.dark;
   });
 
   return <Ctx.Provider value={{ G, setTheme: setG }}>{children}</Ctx.Provider>;
